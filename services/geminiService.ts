@@ -1,49 +1,33 @@
-import { GoogleGenAI } from "@google/genai";
 import { Prediction } from "../types";
 
-// Helper to safely get the API key without crashing if process is undefined
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY;
-  } catch (e) {
-    return undefined;
-  }
+// Helper to determine the correct base URL (same logic as api.ts)
+const getApiBase = () => {
+  return process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : '/.netlify/functions/api';
 };
 
 export const generateMatchAnalysis = async (prediction: Prediction): Promise<string> => {
-  const apiKey = getApiKey();
-
-  // Safety check: Don't attempt to call API if key is missing
-  if (!apiKey) {
-    console.warn("Gemini API Key is missing. Returning placeholder analysis.");
-    return "AI Analysis is currently unavailable. Please configure the API Key to enable this feature.";
-  }
-
   try {
-    // Initialize lazily to avoid top-level errors
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const prompt = `
-      Act as a professional football analyst for the Nigerian betting market.
-      Analyze the following match:
-      League: ${prediction.league}
-      Match: ${prediction.homeTeam} vs ${prediction.awayTeam}
-      Date: ${prediction.date}
-      Current Tip: ${prediction.tip}
-      
-      Provide a concise, 2-paragraph analysis explaining why this tip is likely to win. 
-      Focus on recent form, head-to-head stats, and key players. 
-      Keep the tone confident and professional.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp', // Using a standard flash model available
-      contents: prompt,
+    const apiBase = getApiBase();
+    // Call the backend proxy
+    const response = await fetch(`${apiBase}/analyze`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prediction })
     });
 
-    return response.text || "Analysis currently unavailable. Please check back later.";
+    if (!response.ok) {
+        throw new Error('Analysis request failed');
+    }
+
+    const data = await response.json();
+    return data.analysis || "Analysis currently unavailable.";
+
   } catch (error) {
-    console.error("Error generating analysis:", error);
-    return "AI Analysis is temporarily unavailable due to high demand or connection issues. Please try again.";
+    console.error("Error fetching analysis:", error);
+    return "AI Analysis is temporarily unavailable. Please try again later.";
   }
 };

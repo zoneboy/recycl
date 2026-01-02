@@ -1,13 +1,20 @@
 import { User, Prediction, PaymentTransaction, BlogPost, SubscriptionTier, PaymentStatus } from "../types";
 import { MOCK_PREDICTIONS, MOCK_USERS, MOCK_TRANSACTIONS, MOCK_BLOG_POSTS } from "./mockData";
 
-const API_BASE = '/.netlify/functions/api';
+// Dynamic API Base URL: 
+// If we are in development/local, use the Express server on port 5000.
+// In production (Netlify), use the Serverless Function path.
+const API_BASE = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : '/.netlify/functions/api';
 
 // Helper to handle response with fallback
 const fetchWithFallback = async <T>(endpoint: string, options?: RequestInit, mockData?: T): Promise<T> => {
+  const url = `${API_BASE}${endpoint.replace('/api', '')}`; // ensure we don't double stack /api if endpoint has it
+  
   try {
     // Attempt fetch
-    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    const response = await fetch(endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : endpoint, options);
     
     // Check for network success
     if (!response.ok) {
@@ -53,6 +60,7 @@ export const api = {
 
     return fetchWithFallback('/auth/login', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     }, fallbackResponse as User);
   },
@@ -68,6 +76,7 @@ export const api = {
 
     return fetchWithFallback('/auth/register', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     }, fallbackResponse);
   },
@@ -80,6 +89,7 @@ export const api = {
   createPrediction: async (prediction: Prediction): Promise<Prediction> => {
     return fetchWithFallback('/predictions', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prediction),
     }, prediction);
   },
@@ -93,6 +103,7 @@ export const api = {
   updatePrediction: async (prediction: Prediction): Promise<Prediction> => {
     return fetchWithFallback('/predictions', {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prediction),
     }, prediction);
   },
@@ -105,6 +116,7 @@ export const api = {
   createTransaction: async (transaction: PaymentTransaction): Promise<PaymentTransaction> => {
     return fetchWithFallback('/transactions', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(transaction),
     }, transaction);
   },
@@ -115,6 +127,7 @@ export const api = {
      
      return fetchWithFallback('/transactions', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status }),
     }, fallback);
   },
@@ -127,6 +140,7 @@ export const api = {
   updateUser: async (user: User): Promise<User> => {
       return fetchWithFallback('/users', {
           method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(user)
       }, user);
   },
@@ -145,6 +159,7 @@ export const api = {
   createBlogPost: async (post: BlogPost): Promise<BlogPost> => {
     return fetchWithFallback('/blog', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(post),
     }, post);
   },
