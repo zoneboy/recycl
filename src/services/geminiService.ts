@@ -1,10 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { Prediction } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const generateMatchAnalysis = async (prediction: Prediction): Promise<string> => {
   try {
+    // Initialize client here to prevent app crash on load if env var is missing
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
     const prompt = `
       Act as a professional football analyst for the Nigerian betting market.
       Analyze the following match:
