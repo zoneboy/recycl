@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import PredictionCard from './components/PredictionCard';
-import { PLANS, MOCK_TIPSTERS } from './services/mockData'; // Keeping PLANS/TIPSTERS as constants
+import { PLANS, MOCK_TIPSTERS } from './services/mockData'; // Only constant Plans and Tipster info remain
 import { api } from './services/api';
 import { User, SubscriptionTier, Prediction, PredictionResult, MatchStatus, PaymentTransaction, PaymentStatus, BlogPost } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';

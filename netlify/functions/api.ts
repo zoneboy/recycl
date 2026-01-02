@@ -23,7 +23,7 @@ const response = (statusCode: number, body: any) => ({
   statusCode,
   headers: {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*', // Adjust for production security
+    'Access-Control-Allow-Origin': '*', // Adjust for specific domain in production
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
   },
@@ -43,9 +43,9 @@ const verifyToken = (headers: Record<string, string | undefined>) => {
 
 // --- Main Handler ---
 export const handler = async (event: HandlerEvent) => {
+  // Handle Preflight Options
   if (event.httpMethod === 'OPTIONS') return response(200, {});
 
-  const sql = getSql();
   const path = event.path.replace('/api/', '').replace('/.netlify/functions/api/', '');
   
   // Parse Body
@@ -55,10 +55,17 @@ export const handler = async (event: HandlerEvent) => {
   }
 
   try {
+    const sql = getSql();
+
     // --- Auth Routes ---
     
     if (path === 'auth/register' && event.httpMethod === 'POST') {
       const { name, email, password, phoneNumber } = data;
+      
+      // Check if user exists
+      const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+      if (existing.length > 0) return response(400, { error: 'Email already exists' });
+
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = `u_${Date.now()}`;
       
@@ -105,6 +112,8 @@ export const handler = async (event: HandlerEvent) => {
       if (!decoded) return response(401, { error: 'Unauthorized' });
       
       const users = await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${decoded.id}`;
+      if (users.length === 0) return response(404, { error: 'User not found' });
+      
       return response(200, users[0]);
     }
 
