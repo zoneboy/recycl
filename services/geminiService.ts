@@ -1,31 +1,33 @@
-import { GoogleGenAI } from "@google/genai";
 import { Prediction } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to determine the correct base URL (same logic as api.ts)
+const getApiBase = () => {
+  return process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : '/.netlify/functions/api';
+};
 
 export const generateMatchAnalysis = async (prediction: Prediction): Promise<string> => {
   try {
-    const prompt = `
-      Act as a professional football analyst for the Nigerian betting market.
-      Analyze the following match:
-      League: ${prediction.league}
-      Match: ${prediction.homeTeam} vs ${prediction.awayTeam}
-      Date: ${prediction.date}
-      Current Tip: ${prediction.tip}
-      
-      Provide a concise, 2-paragraph analysis explaining why this tip is likely to win. 
-      Focus on recent form, head-to-head stats, and key players. 
-      Keep the tone confident and professional.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+    const apiBase = getApiBase();
+    // Call the backend proxy
+    const response = await fetch(`${apiBase}/analyze`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prediction })
     });
 
-    return response.text || "Analysis currently unavailable. Please check back later.";
+    if (!response.ok) {
+        throw new Error('Analysis request failed');
+    }
+
+    const data = await response.json();
+    return data.analysis || "Analysis currently unavailable.";
+
   } catch (error) {
-    console.error("Error generating analysis:", error);
-    return "AI Analysis is temporarily unavailable due to high demand. Please try again.";
+    console.error("Error fetching analysis:", error);
+    return "AI Analysis is temporarily unavailable. Please try again later.";
   }
 };
