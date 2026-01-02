@@ -10,8 +10,10 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'http://localhost:8888/.netlify/functions',
+            // Point to the Netlify Dev server's specific function endpoint
+            target: 'http://localhost:8888/.netlify/functions/api',
             changeOrigin: true,
+            // Remove the /api prefix before forwarding to the function
             rewrite: (path) => path.replace(/^\/api/, ''),
           },
         },

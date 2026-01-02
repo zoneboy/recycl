@@ -41,7 +41,14 @@ const verifyToken = (headers: Record<string, string | undefined>) => {
 export const handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return response(200, {});
 
-  const path = event.path.replace('/api/', '').replace('/.netlify/functions/api/', '');
+  // Clean the path to handle various routing scenarios (direct call vs rewrite)
+  // 1. Remove standard Netlify function prefix
+  // 2. Remove /api prefix (from frontend rewrite)
+  // 3. Remove leading slash
+  const path = event.path
+    .replace(/^\/\.netlify\/functions\/api/, '')
+    .replace(/^\/api/, '')
+    .replace(/^\//, '');
   
   let data: any = {};
   if (event.body) {

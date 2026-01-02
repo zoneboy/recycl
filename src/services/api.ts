@@ -1,8 +1,9 @@
 import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, MatchStatus, SubscriptionTier } from '../types';
 
-// Safely check for production environment
-const isProd = import.meta.env && import.meta.env.PROD;
-const API_URL = isProd ? '/.netlify/functions/api' : '/api';
+// Use relative path '/api' for both dev and prod.
+// Dev: Vite proxy handles it.
+// Prod: Netlify redirect handles it.
+const API_URL = '/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
