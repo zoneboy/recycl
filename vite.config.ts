@@ -23,6 +23,19 @@ export default defineConfig(({ mode }) => {
           // Use path.resolve('.') to resolve root directory, avoiding __dirname issues in some environments
           '@': path.resolve('.'),
         }
+      },
+      build: {
+        // Increase chunk size warning limit to suppress non-critical warnings
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                // Manual chunking to improve cacheability and loading
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom', 'recharts', 'lucide-react'],
+                    genai: ['@google/genai']
+                }
+            }
+        }
       }
     };
 });
