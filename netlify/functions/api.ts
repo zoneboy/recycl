@@ -60,12 +60,15 @@ export const handler = async (event: HandlerEvent) => {
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = `u_${Date.now()}`;
       
+      // LOGIC CHANGE: Check for specific email to assign admin role
+      const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
+      
       await sql`
         INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
-        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', 'user', ${new Date().toISOString()})
+        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
       `;
       
-      const token = jwt.sign({ id, email, role: 'user' }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
+      const token = jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
       const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
       
       return response(201, { user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date }, token });
