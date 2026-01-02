@@ -1,6 +1,6 @@
 import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, MatchStatus, SubscriptionTier } from '../types';
 
-// Safely check for production environment
+// Safely check for production environment to prevent "Cannot read properties of undefined (reading 'PROD')"
 const isProd = import.meta.env && import.meta.env.PROD;
 const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 

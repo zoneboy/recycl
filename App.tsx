@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import PredictionCard from './components/PredictionCard';
-import { MOCK_PREDICTIONS, MOCK_TIPSTERS, PLANS, MOCK_TRANSACTIONS, MOCK_USERS, MOCK_BLOG_POSTS } from './services/mockData';
+import { PLANS, MOCK_TIPSTERS } from './services/mockData';
+import { api } from './services/api';
 import { User, SubscriptionTier, Prediction, PredictionResult, MatchStatus, PaymentTransaction, PaymentStatus, BlogPost } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { Check, Star, Shield, TrendingUp, Users, Plus, Trash2, Edit2, Save, X, CreditCard, Upload, ExternalLink, Copy, CheckCircle, Zap, UserPlus, AlertTriangle, Calendar, ArrowLeft, Mail, Lock, Phone, User as UserIcon, XCircle, List, Settings, Bell, ChevronLeft, ChevronRight, CheckCircle2, MessageSquare, MapPin, Trophy, BookOpen, PieChart, Eye, FileText } from 'lucide-react';
@@ -66,7 +67,7 @@ const AddPredictionModal: React.FC<{onClose: () => void, onAdd: (p: Prediction) 
         league: '', homeTeam: '', awayTeam: '', date: '', time: '', tip: '', odds: 1.5, confidence: 5, minTier: SubscriptionTier.FREE
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const newPrediction: Prediction = {
             id: `p_${Date.now()}`,
@@ -75,7 +76,12 @@ const AddPredictionModal: React.FC<{onClose: () => void, onAdd: (p: Prediction) 
             result: PredictionResult.PENDING,
             tipsterId: 't1' // Default admin
         };
-        onAdd(newPrediction);
+        try {
+            await api.addPrediction(newPrediction);
+            onAdd(newPrediction);
+        } catch (e) {
+            alert('Failed to add prediction');
+        }
     };
 
     return (
@@ -118,7 +124,7 @@ const AddPredictionModal: React.FC<{onClose: () => void, onAdd: (p: Prediction) 
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Tier</label>
                             <select className="w-full border border-gray-300 p-2 rounded focus:ring-naija-green focus:border-naija-green" onChange={e => setFormData({...formData, minTier: e.target.value as SubscriptionTier})}>
-                                {Object.values(SubscriptionTier).map(t => <option key={t} value={t}>{t}</option>)}
+                                {Object.values(SubscriptionTier).map(t => <option key={t as string} value={t as string}>{t as string}</option>)}
                             </select>
                         </div>
                     </div>
@@ -147,14 +153,19 @@ const AddBlogPostModal: React.FC<{onClose: () => void, onAdd: (b: BlogPost) => v
         title: '', excerpt: '', content: '', author: 'Admin', tier: SubscriptionTier.FREE, imageUrl: 'https://placehold.co/600x400'
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const newPost: BlogPost = {
             id: `b_${Date.now()}`,
             date: new Date().toISOString().slice(0, 10),
             ...formData as any
         };
-        onAdd(newPost);
+        try {
+            await api.addBlogPost(newPost);
+            onAdd(newPost);
+        } catch (e) {
+            alert('Failed to add post');
+        }
     };
 
     return (
@@ -181,7 +192,7 @@ const AddBlogPostModal: React.FC<{onClose: () => void, onAdd: (b: BlogPost) => v
                          <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Access Tier</label>
                             <select className="w-full border border-gray-300 p-2 rounded focus:ring-naija-green focus:border-naija-green" onChange={e => setFormData({...formData, tier: e.target.value as SubscriptionTier})}>
-                                {Object.values(SubscriptionTier).map(t => <option key={t} value={t}>{t}</option>)}
+                                {Object.values(SubscriptionTier).map(t => <option key={t as string} value={t as string}>{t as string}</option>)}
                             </select>
                          </div>
                          <div>
@@ -784,7 +795,7 @@ const DashboardPage: React.FC<{
         }
     };
 
-    const handlePaymentSubmit = (e: React.FormEvent) => {
+    const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const newTx: PaymentTransaction = {
             id: `tx_${Date.now()}`,
@@ -797,13 +808,18 @@ const DashboardPage: React.FC<{
             date: new Date().toISOString().slice(0, 10),
             receiptUrl: receiptUrl || 'https://placehold.co/400?text=Receipt'
         };
-        setTransactions([newTx, ...transactions]);
-        alert("Payment submitted! pending admin approval.");
-        setActiveTab('history');
-        // Reset form
-        setAmount('');
-        setReceiptUrl('');
-        setReceiptFile(null);
+        try {
+            await api.addTransaction(newTx);
+            setTransactions([newTx, ...transactions]);
+            alert("Payment submitted! pending admin approval.");
+            setActiveTab('history');
+            // Reset form
+            setAmount('');
+            setReceiptUrl('');
+            setReceiptFile(null);
+        } catch (e) {
+            alert('Failed to submit payment');
+        }
     };
 
     return (
@@ -855,7 +871,7 @@ const DashboardPage: React.FC<{
                              <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-500">Expires On</span>
                                 <span className="text-sm font-bold text-gray-900">
-                                    {user.subscriptionExpiryDate || '2026-01-06'}
+                                    {user.subscriptionExpiryDate ? new Date(user.subscriptionExpiryDate).toLocaleDateString() : 'N/A'}
                                 </span>
                              </div>
                           </div>
@@ -1014,10 +1030,27 @@ const DashboardPage: React.FC<{
     );
 };
 
-const LoginPage: React.FC<{onLogin: (e: React.FormEvent, email: string) => void}> = ({ onLogin }) => {
+const LoginPage: React.FC<{onLogin: (user: User) => void}> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      setError('');
+      try {
+          const { user, token } = await api.login(email, password);
+          localStorage.setItem('token', token);
+          onLogin(user);
+      } catch (e) {
+          setError('Invalid email or password');
+      } finally {
+          setLoading(false);
+      }
+  };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 bg-gray-50">
@@ -1025,25 +1058,11 @@ const LoginPage: React.FC<{onLogin: (e: React.FormEvent, email: string) => void}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
           <p className="text-gray-500 mt-2">Sign in to access your dashboard</p>
-          
-           <div className="mt-4 p-4 bg-gray-50 rounded text-left text-xs text-gray-500 space-y-1 border border-gray-100">
-              <p className="font-bold mb-2 text-gray-700">Test Credentials (Click to fill):</p>
-              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('admin@heptabet.com')}>
-                  <span>Admin:</span> <strong>admin@heptabet.com</strong>
-              </p>
-              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('basic@heptabet.com')}>
-                  <span>Basic:</span> <strong>basic@heptabet.com</strong>
-              </p>
-              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('standard@heptabet.com')}>
-                  <span>Standard:</span> <strong>standard@heptabet.com</strong>
-              </p>
-              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('premium@heptabet.com')}>
-                  <span>Premium:</span> <strong>premium@heptabet.com</strong>
-              </p>
-          </div>
         </div>
         
-        <form onSubmit={(e) => onLogin(e, email)} className="space-y-6">
+        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
              <div className="relative">
@@ -1077,9 +1096,10 @@ const LoginPage: React.FC<{onLogin: (e: React.FormEvent, email: string) => void}
           </div>
           <button 
             type="submit" 
-            className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition shadow-lg shadow-green-100"
+            disabled={loading}
+            className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition shadow-lg shadow-green-100 disabled:opacity-70"
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
@@ -1091,7 +1111,7 @@ const LoginPage: React.FC<{onLogin: (e: React.FormEvent, email: string) => void}
   );
 };
 
-const RegisterPage: React.FC<{onRegister: (name: string, email: string, phoneNumber: string) => void}> = ({ onRegister }) => {
+const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister }) => {
     const [step, setStep] = useState<1 | 2>(1);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -1099,55 +1119,25 @@ const RegisterPage: React.FC<{onRegister: (name: string, email: string, phoneNum
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
-    // Verification state
-    const [generatedCode, setGeneratedCode] = useState('');
-    const [inputCode, setInputCode] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const navigate = useNavigate();
 
-    const validatePassword = (pwd: string): string | null => {
-        if (pwd.length < 6) return "Password must be at least 6 characters long.";
-        return null;
-    };
-
-    const handleInitialSubmit = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
-        
-        const passwordError = validatePassword(password);
-        if (passwordError) {
-            setError(passwordError);
-            return;
-        }
-
         if (password !== confirmPassword) {
-            setError("Passwords do not match!");
+            setError("Passwords do not match");
             return;
         }
-
         setIsSending(true);
-        // Simulate sending code
-        const code = Math.floor(1000 + Math.random() * 9000).toString();
-        
-        // Mock API delay
-        setTimeout(() => {
-            setGeneratedCode(code);
+        try {
+            const { user, token } = await api.register(username, email, phoneNumber, password);
+            localStorage.setItem('token', token);
+            onRegister(user);
+        } catch (e) {
+            setError("Registration failed. Email might be in use.");
             setIsSending(false);
-            setStep(2);
-            // In a real app, this would be an email. For demo, we use alert.
-            alert(`DEMO: Your verification code is ${code}`);
-        }, 1000);
-    };
-
-    const handleVerifyAndRegister = (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        if (inputCode === generatedCode) {
-            onRegister(username, email, phoneNumber);
-        } else {
-            setError("Invalid verification code. Please try again.");
         }
     };
 
@@ -1166,119 +1156,85 @@ const RegisterPage: React.FC<{onRegister: (name: string, email: string, phoneNum
                     </div>
                 )}
                 
-                {step === 1 ? (
-                    <form onSubmit={handleInitialSubmit} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                            <div className="relative">
-                                <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
-                                <input 
-                                    type="text" 
-                                    value={username}
-                                    onChange={(e) => { setUsername(e.target.value); setError(null); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                    placeholder="Choose a username"
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                                <input 
-                                    type="email" 
-                                    value={email}
-                                    onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                    placeholder="Enter your email"
-                                    required
-                                />
-                            </div>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
-                                <input 
-                                    type="tel" 
-                                    value={phoneNumber}
-                                    onChange={(e) => { setPhoneNumber(e.target.value); setError(null); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                    placeholder="080..."
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                                <input 
-                                    type="password" 
-                                    value={password}
-                                    onChange={(e) => { setPassword(e.target.value); setError(null); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                    placeholder="Create a password"
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                                <input 
-                                    type="password" 
-                                    value={confirmPassword}
-                                    onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                    placeholder="Repeat password"
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <button 
-                            type="submit" 
-                            disabled={isSending}
-                            className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center disabled:opacity-70 shadow-lg shadow-green-100"
-                        >
-                            {isSending ? 'Sending Code...' : 'Next: Verify Email'}
-                        </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleVerifyAndRegister} className="space-y-6">
-                        <div className="bg-green-50 p-4 rounded-lg text-sm text-green-800 mb-4 flex items-start">
-                             <CheckCircle className="mr-2 flex-shrink-0" size={16} />
-                             We've sent a verification code to <strong>{email}</strong>.
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Verification Code</label>
+                <form onSubmit={handleRegister} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <div className="relative">
+                            <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
                             <input 
                                 type="text" 
-                                value={inputCode}
-                                onChange={(e) => { setInputCode(e.target.value); setError(null); }}
-                                className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
-                                placeholder="0000"
-                                maxLength={4}
+                                value={username}
+                                onChange={(e) => { setUsername(e.target.value); setError(null); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
+                                placeholder="Choose a username"
                                 required
                             />
                         </div>
-                        <button 
-                            type="submit" 
-                            className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition shadow-lg"
-                        >
-                            Verify & Complete Registration
-                        </button>
-                        <button 
-                            type="button"
-                            onClick={() => setStep(1)}
-                            className="w-full text-gray-500 text-sm hover:text-gray-700"
-                        >
-                            Go Back
-                        </button>
-                    </form>
-                )}
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
+                            <input 
+                                type="email" 
+                                value={email}
+                                onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
+                                placeholder="Enter your email"
+                                required
+                            />
+                        </div>
+                    </div>
+                        <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
+                            <input 
+                                type="tel" 
+                                value={phoneNumber}
+                                onChange={(e) => { setPhoneNumber(e.target.value); setError(null); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
+                                placeholder="080..."
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                            <input 
+                                type="password" 
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
+                                placeholder="Create a password"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                            <input 
+                                type="password" 
+                                value={confirmPassword}
+                                onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none transition"
+                                placeholder="Repeat password"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={isSending}
+                        className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center disabled:opacity-70 shadow-lg shadow-green-100"
+                    >
+                        {isSending ? 'Creating Account...' : 'Register'}
+                    </button>
+                </form>
                 
                 <div className="mt-6 text-center text-sm text-gray-500">
                     Already have an account? <button onClick={() => navigate('/login')} className="text-naija-green font-medium hover:underline ml-1">Sign In</button>
@@ -1538,14 +1494,17 @@ const AdminDashboardPage: React.FC<{
     setShowAddBlogModal(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteModal.id) return;
 
     if (deleteModal.type === 'prediction') {
+        await api.deletePrediction(deleteModal.id);
         setPredictions(prev => prev.filter(p => p.id !== deleteModal.id));
     } else if (deleteModal.type === 'user') {
+        // await api.deleteUser(deleteModal.id);
         setUsers(prev => prev.filter(u => u.id !== deleteModal.id));
     } else if (deleteModal.type === 'blog') {
+        // await api.deleteBlog(deleteModal.id);
         setBlogPosts(prev => prev.filter(b => b.id !== deleteModal.id));
     }
     setDeleteModal({ isOpen: false, type: null, id: null });
@@ -1560,28 +1519,33 @@ const AdminDashboardPage: React.FC<{
       setReceiptModalOpen(true);
   };
 
-  const handleApproveTransaction = (id: string) => {
+  const handleApproveTransaction = async (id: string) => {
+    await api.updateTransactionStatus(id, PaymentStatus.APPROVED);
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: PaymentStatus.APPROVED } : t));
-    // Here you would also update user subscription logic in a real app
   };
 
-  const handleRejectTransaction = (id: string) => {
+  const handleRejectTransaction = async (id: string) => {
+    await api.updateTransactionStatus(id, PaymentStatus.REJECTED);
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: PaymentStatus.REJECTED } : t));
   };
 
-  const handleUpdateStatus = (id: string, status: MatchStatus) => {
+  const handleUpdateStatus = async (id: string, status: MatchStatus) => {
+    await api.updatePredictionStatus(id, status);
     setPredictions(prev => prev.map(p => p.id === id ? { ...p, status } : p));
   };
   
-  const handleUpdateResult = (id: string, result: PredictionResult) => {
+  const handleUpdateResult = async (id: string, result: PredictionResult) => {
+    await api.updatePredictionResult(id, result);
     setPredictions(prev => prev.map(p => p.id === id ? { ...p, result } : p));
   };
 
   const handleUpgradeUser = (userId: string, tier: SubscriptionTier) => {
+      // API Call needed here
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription: tier } : u));
   };
 
   const handleUpdateExpiry = (userId: string, newDate: string) => {
+      // API call needed here
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionExpiryDate: newDate } : u));
   };
 
@@ -1686,7 +1650,7 @@ const AdminDashboardPage: React.FC<{
                             onChange={(e) => handleUpdateStatus(pred.id, e.target.value as MatchStatus)}
                             className="border-gray-300 rounded text-xs py-1 px-2 border focus:ring-naija-green focus:border-naija-green bg-white"
                          >
-                            {Object.values(MatchStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                            {Object.values(MatchStatus).map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
                          </select>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1697,7 +1661,7 @@ const AdminDashboardPage: React.FC<{
                               ${pred.result === PredictionResult.WON ? 'text-green-700 bg-green-50' : 
                                 pred.result === PredictionResult.LOST ? 'text-red-700 bg-red-50' : 'text-gray-700 bg-white'}`}
                          >
-                            {Object.values(PredictionResult).map(r => <option key={r} value={r}>{r}</option>)}
+                            {Object.values(PredictionResult).map(r => <option key={r as string} value={r as string}>{r as string}</option>)}
                          </select>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1788,7 +1752,7 @@ const AdminDashboardPage: React.FC<{
                                         className="text-xs border-gray-300 rounded py-1 px-2 border focus:ring-naija-green focus:border-naija-green bg-white"
                                     >
                                         {Object.values(SubscriptionTier).map(tier => (
-                                            <option key={tier} value={tier}>{tier}</option>
+                                            <option key={tier as string} value={tier as string}>{tier as string}</option>
                                         ))}
                                     </select>
                                 </td>
@@ -1796,7 +1760,7 @@ const AdminDashboardPage: React.FC<{
                                     <input 
                                         type="date"
                                         className="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-naija-green focus:border-naija-green w-32"
-                                        value={u.subscriptionExpiryDate || ''}
+                                        value={u.subscriptionExpiryDate ? new Date(u.subscriptionExpiryDate).toISOString().split('T')[0] : ''}
                                         onChange={(e) => handleUpdateExpiry(u.id, e.target.value)}
                                     />
                                 </td>
@@ -1919,67 +1883,55 @@ const App: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
-  const [predictions, setPredictions] = useState<Prediction[]>(MOCK_PREDICTIONS);
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>(MOCK_TRANSACTIONS);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(MOCK_BLOG_POSTS);
+  const [users, setUsers] = useState<User[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Initial Data Fetch
+  useEffect(() => {
+    // 1. Check Session
+    api.getCurrentUser().then(setUser);
+
+    // 2. Fetch Public Data
+    api.getPredictions().then(setPredictions);
+    api.getBlogPosts().then(setBlogPosts);
+  }, []);
+
+  // Fetch Protected Data on User Change
+  useEffect(() => {
+    if (user) {
+        api.getTransactions().then(setTransactions);
+        if (user.role === 'admin') {
+            api.getUsers().then(setUsers);
+        }
+    }
+  }, [user]);
 
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  const handleLogin = (e: React.FormEvent, email: string) => {
-    e.preventDefault();
-    
-    // Check if user exists in our local "database" (mock data + registered users)
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (existingUser) {
-        setUser(existingUser);
-        if (existingUser.role === 'admin') {
-            navigate('/admin');
-        } else {
-            navigate('/dashboard');
-        }
-    } else {
-      // Fallback for demo purposes if email not found (creates a temp free user)
-      const newUser: User = {
-        id: 'u_' + Date.now(),
-        name: 'New User',
-        email: email,
-        subscription: SubscriptionTier.FREE,
-        role: 'user',
-        joinDate: new Date().toISOString().slice(0, 10),
-        subscriptionExpiryDate: null
-      };
-      setUsers([...users, newUser]);
-      setUser(newUser);
-      navigate('/dashboard');
-    }
+  const handleLogin = (loggedInUser: User) => {
+      setUser(loggedInUser);
+      if (loggedInUser.role === 'admin') {
+          navigate('/admin');
+      } else {
+          navigate('/dashboard');
+      }
   };
 
-  const handleRegister = (name: string, email: string, phoneNumber: string) => {
-      // Registration Logic: Always defaults to FREE tier
-      const newUser: User = {
-          id: 'u_' + Date.now(),
-          name: name,
-          email: email,
-          phoneNumber: phoneNumber,
-          subscription: SubscriptionTier.FREE,
-          role: 'user',
-          joinDate: new Date().toISOString().slice(0, 10),
-          subscriptionExpiryDate: null
-      };
-      setUsers(prev => [...prev, newUser]);
-      setUser(newUser); // Auto login
+  const handleRegister = (newUser: User) => {
+      setUser(newUser);
       navigate('/dashboard');
-    }
+  }
 
   const handleLogout = () => {
     setUser(null);
+    localStorage.removeItem('token');
     navigate('/');
   };
 
