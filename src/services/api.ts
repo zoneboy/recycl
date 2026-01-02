@@ -117,8 +117,7 @@ export const api = {
   },
 
   async deleteBlogPost(id: string) {
-      // Need endpoint in backend
-      // await fetch(`${API_URL}/blog/${id}`, { method: 'DELETE', headers: getHeaders() });
+      await fetch(`${API_URL}/blog/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   // Users (Admin)
@@ -128,6 +127,6 @@ export const api = {
   },
 
   async deleteUser(id: string) {
-      // Need endpoint
+      await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: getHeaders() });
   }
 };
