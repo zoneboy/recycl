@@ -128,6 +128,14 @@ export const api = {
       return res.ok ? res.json() : [];
   },
 
+  async updateUserSubscription(id: string, subscription?: SubscriptionTier, subscriptionExpiryDate?: string | null) {
+      await fetch(`${API_URL}/users/${id}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify({ subscription, subscriptionExpiryDate })
+      });
+  },
+
   async deleteUser(id: string) {
       await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: getHeaders() });
   }

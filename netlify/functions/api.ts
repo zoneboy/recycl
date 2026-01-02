@@ -257,6 +257,22 @@ export const handler = async (event: HandlerEvent) => {
         return response(200, mapped);
     }
 
+    if (path.startsWith('users/') && event.httpMethod === 'PUT') {
+        const user = verifyToken(event.headers);
+        if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
+        const id = path.split('/')[1];
+        
+        if (data.subscription) {
+            await sql`UPDATE users SET subscription = ${data.subscription} WHERE id = ${id}`;
+        }
+        
+        if (data.subscriptionExpiryDate !== undefined) {
+             await sql`UPDATE users SET subscription_expiry_date = ${data.subscriptionExpiryDate} WHERE id = ${id}`;
+        }
+        
+        return response(200, { success: true });
+    }
+
     if (path.startsWith('users/') && event.httpMethod === 'DELETE') {
         const user = verifyToken(event.headers);
         if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });

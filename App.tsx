@@ -1539,14 +1539,26 @@ const AdminDashboardPage: React.FC<{
     setPredictions(prev => prev.map(p => p.id === id ? { ...p, result } : p));
   };
 
-  const handleUpgradeUser = (userId: string, tier: SubscriptionTier) => {
-      // API Call needed here
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription: tier } : u));
+  const handleUpgradeUser = async (userId: string, tier: SubscriptionTier) => {
+      try {
+          await api.updateUserSubscription(userId, tier);
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription: tier } : u));
+      } catch (e) {
+          console.error(e);
+          alert('Failed to update subscription');
+      }
   };
 
-  const handleUpdateExpiry = (userId: string, newDate: string) => {
-      // API call needed here
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionExpiryDate: newDate } : u));
+  const handleUpdateExpiry = async (userId: string, newDate: string) => {
+      try {
+          // If clearing the date (empty string), send null
+          const dateToSend = newDate === '' ? null : newDate;
+          await api.updateUserSubscription(userId, undefined, dateToSend);
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionExpiryDate: dateToSend } : u));
+      } catch (e) {
+          console.error(e);
+          alert('Failed to update expiry date');
+      }
   };
 
   return (
