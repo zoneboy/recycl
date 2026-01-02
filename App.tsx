@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import PredictionCard from './components/PredictionCard';
-import { StorageService, INITIAL_TIPSTERS, PLANS } from './services/storage';
+import { MOCK_PREDICTIONS, MOCK_TIPSTERS, PLANS, MOCK_TRANSACTIONS, MOCK_USERS, MOCK_BLOG_POSTS } from './services/mockData';
 import { User, SubscriptionTier, Prediction, PredictionResult, MatchStatus, PaymentTransaction, PaymentStatus, BlogPost } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
-import { Check, Shield, TrendingUp, Users, Plus, Trash2, Edit2, Save, X, Upload, ExternalLink, Copy, CheckCircle, Zap, UserPlus, AlertTriangle, Calendar, ArrowLeft, Mail, Lock, Phone, User as UserIcon, XCircle, List, Settings, Bell, ChevronLeft, ChevronRight, CheckCircle2, MessageSquare, MapPin, Trophy, BookOpen, Eye } from 'lucide-react';
+import { Check, Star, Shield, TrendingUp, Users, Plus, Trash2, Edit2, Save, X, CreditCard, Upload, ExternalLink, Copy, CheckCircle, Zap, UserPlus, AlertTriangle, Calendar, ArrowLeft, Mail, Lock, Phone, User as UserIcon, XCircle, List, Settings, Bell, ChevronLeft, ChevronRight, CheckCircle2, MessageSquare, MapPin, Trophy, BookOpen, PieChart, Eye, FileText } from 'lucide-react';
 
 // --- Helper Functions ---
 const getTierWeight = (tier: SubscriptionTier) => {
@@ -217,10 +217,21 @@ const HomePage: React.FC<{user: User | null, predictions: Prediction[]}> = ({ us
     <div className="bg-slate-50 font-sans selection:bg-naija-green selection:text-white">
       {/* Modern Hero Section */}
       <section className="relative pt-20 pb-32 lg:pt-32 lg:pb-48 overflow-hidden bg-gray-900">
+        {/* Background Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 pointer-events-none">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-naija-green/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/4"></div>
+        </div>
+        
+        {/* Grid Pattern Overlay */}
         <div className="absolute inset-0 z-0 opacity-10" style={{backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-400 text-sm font-medium mb-8 backdrop-blur-sm animate-fade-in-up">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             #1 Football Prediction Platform
           </div>
           
@@ -230,7 +241,7 @@ const HomePage: React.FC<{user: User | null, predictions: Prediction[]}> = ({ us
           </h1>
           
           <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Get accurate daily tips, expert analysis, and AI-powered insights for Premier League, La Liga, and more.
+            Get accurate daily tips, expert analysis, and AI-powered insights for Premier League, La Liga, and more. Join over 50,000 winners today.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -290,6 +301,9 @@ const HomePage: React.FC<{user: User | null, predictions: Prediction[]}> = ({ us
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Featured Predictions</h2>
                     <p className="text-gray-500 text-lg max-w-xl">Curated high-confidence tips powered by our expert analysis and AI algorithms.</p>
                 </div>
+                <button onClick={() => navigate('/predictions')} className="hidden md:flex items-center text-naija-green font-bold hover:text-emerald-700 transition group mt-4 md:mt-0">
+                    View all matches <ArrowLeft className="ml-2 rotate-180 group-hover:translate-x-1 transition-transform" />
+                </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -300,6 +314,54 @@ const HomePage: React.FC<{user: User | null, predictions: Prediction[]}> = ({ us
                             user={user} 
                             onSubscribeClick={() => navigate('/pricing')}
                         />
+                    </div>
+                ))}
+            </div>
+            
+            <div className="mt-12 text-center md:hidden">
+                <button onClick={() => navigate('/predictions')} className="bg-white border border-gray-200 text-gray-900 font-bold py-3 px-8 rounded-lg hover:bg-gray-50 transition w-full shadow-sm">
+                    View all matches
+                </button>
+            </div>
+        </div>
+      </section>
+
+       {/* Why Choose Section - Dark/Contrast */}
+       <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-naija-green/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16 max-w-3xl mx-auto">
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight">Why Bettors Trust Heptabet</h2>
+                <p className="text-gray-400 text-lg leading-relaxed">We don't rely on luck. Our methodology is built on data science, deep squad knowledge, and real-time market tracking.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[
+                    {
+                        title: "Expert Analysis",
+                        desc: "Our lead analyst is a veteran with a proven track record in both local NPFL and international leagues.",
+                        icon: <Users size={32} className="text-emerald-400" />
+                    },
+                    {
+                        title: "Data Driven",
+                        desc: "We analyze head-to-head stats, current form, injuries, and market trends before posting any tip.",
+                        icon: <TrendingUp size={32} className="text-blue-400" />
+                    },
+                    {
+                        title: "Verified History",
+                        desc: "Transparency is key. We track and publish all our wins and losses so you know exactly how we perform.",
+                        icon: <Shield size={32} className="text-purple-400" />
+                    }
+                ].map((feature, idx) => (
+                    <div key={idx} className="p-8 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors duration-300">
+                        <div className="mb-6 bg-white/5 w-16 h-16 rounded-xl flex items-center justify-center border border-white/5">
+                            {feature.icon}
+                        </div>
+                        <h3 className="text-xl font-bold mb-3 text-white">{feature.title}</h3>
+                        <p className="text-gray-400 leading-relaxed">{feature.desc}</p>
                     </div>
                 ))}
             </div>
@@ -481,7 +543,7 @@ const PredictionsPage: React.FC<{user: User | null, predictions: Prediction[]}> 
 };
 
 const ExpertPage: React.FC<{predictions: Prediction[]}> = ({ predictions }) => {
-  const expert = INITIAL_TIPSTERS[0];
+  const expert = MOCK_TIPSTERS[0];
   const wins = predictions.filter(p => p.result === PredictionResult.WON).length;
   const total = predictions.filter(p => p.result !== PredictionResult.PENDING).length;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 82;
@@ -663,7 +725,7 @@ const DashboardPage: React.FC<{
     user: User | null, 
     predictions: Prediction[], 
     transactions: PaymentTransaction[],
-    setTransactions: (action: React.SetStateAction<PaymentTransaction[]>) => void
+    setTransactions: React.Dispatch<React.SetStateAction<PaymentTransaction[]>>
 }> = ({ user, predictions, transactions, setTransactions }) => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
@@ -735,7 +797,7 @@ const DashboardPage: React.FC<{
             date: new Date().toISOString().slice(0, 10),
             receiptUrl: receiptUrl || 'https://placehold.co/400?text=Receipt'
         };
-        setTransactions(prev => [newTx, ...prev]);
+        setTransactions([newTx, ...transactions]);
         alert("Payment submitted! pending admin approval.");
         setActiveTab('history');
         // Reset form
@@ -971,6 +1033,12 @@ const LoginPage: React.FC<{onLogin: (e: React.FormEvent, email: string) => void}
               </p>
               <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('basic@heptabet.com')}>
                   <span>Basic:</span> <strong>basic@heptabet.com</strong>
+              </p>
+              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('standard@heptabet.com')}>
+                  <span>Standard:</span> <strong>standard@heptabet.com</strong>
+              </p>
+              <p className="flex justify-between cursor-pointer hover:text-naija-green transition" onClick={() => setEmail('premium@heptabet.com')}>
+                  <span>Premium:</span> <strong>premium@heptabet.com</strong>
               </p>
           </div>
         </div>
@@ -1383,6 +1451,12 @@ const TermsPage: React.FC = () => (
             
             <h3>2. Betting Disclaimer</h3>
             <p>Heptabet provides predictions for informational purposes only. We do not guarantee winnings. Betting involves risk, and you should only bet what you can afford to lose.</p>
+            
+            <h3>3. Subscriptions</h3>
+            <p>Premium subscriptions are billed monthly. Refunds are processed according to our Money-Back Guarantee policy within the first 7 days.</p>
+            
+            <h3>4. User Accounts</h3>
+            <p>You are responsible for maintaining the confidentiality of your account credentials.</p>
         </div>
     </div>
 );
@@ -1393,6 +1467,12 @@ const PrivacyPage: React.FC = () => (
         <div className="bg-white rounded-xl shadow-sm p-8 prose prose-green max-w-none">
             <h3>1. Information We Collect</h3>
             <p>We collect information you provide directly to us, such as when you create an account, subscribe to our service, or contact us for support.</p>
+            
+            <h3>2. How We Use Your Information</h3>
+            <p>We use your information to provide, maintain, and improve our services, process transactions, and send you technical notices.</p>
+            
+            <h3>3. Data Security</h3>
+            <p>We implement reasonable security measures to protect your personal information.</p>
         </div>
     </div>
 );
@@ -1400,13 +1480,13 @@ const PrivacyPage: React.FC = () => (
 const AdminDashboardPage: React.FC<{
   user: User | null;
   predictions: Prediction[];
-  setPredictions: (action: React.SetStateAction<Prediction[]>) => void;
+  setPredictions: React.Dispatch<React.SetStateAction<Prediction[]>>;
   transactions: PaymentTransaction[];
-  setTransactions: (action: React.SetStateAction<PaymentTransaction[]>) => void;
+  setTransactions: React.Dispatch<React.SetStateAction<PaymentTransaction[]>>;
   users: User[];
-  setUsers: (action: React.SetStateAction<User[]>) => void;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   blogPosts: BlogPost[];
-  setBlogPosts: (action: React.SetStateAction<BlogPost[]>) => void;
+  setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>;
 }> = ({ user, predictions, setPredictions, transactions, setTransactions, users, setUsers, blogPosts, setBlogPosts }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('predictions');
@@ -1424,9 +1504,18 @@ const AdminDashboardPage: React.FC<{
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
   
+  // Admin Notification Settings State
   const [adminSettings, setAdminSettings] = useState({
-    emailNotifications: { newPayment: true, subscriptionExpiry: false, newUser: true },
-    inAppNotifications: { newPayment: true, subscriptionExpiry: true, newUser: false }
+    emailNotifications: {
+      newPayment: true,
+      subscriptionExpiry: false,
+      newUser: true
+    },
+    inAppNotifications: {
+      newPayment: true,
+      subscriptionExpiry: true,
+      newUser: false
+    }
   });
 
   useEffect(() => {
@@ -1473,6 +1562,7 @@ const AdminDashboardPage: React.FC<{
 
   const handleApproveTransaction = (id: string) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: PaymentStatus.APPROVED } : t));
+    // Here you would also update user subscription logic in a real app
   };
 
   const handleRejectTransaction = (id: string) => {
@@ -1829,54 +1919,12 @@ const App: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const [predictions, setPredictions] = useState<Prediction[]>(MOCK_PREDICTIONS);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>(MOCK_TRANSACTIONS);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(MOCK_BLOG_POSTS);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // --- INITIALIZE STORAGE ---
-  useEffect(() => {
-    StorageService.init();
-    setUsers(StorageService.getUsers());
-    setPredictions(StorageService.getPredictions());
-    setTransactions(StorageService.getTransactions());
-    setBlogPosts(StorageService.getBlogPosts());
-  }, []);
-
-  // --- PERSISTENCE HANDLERS ---
-  const handleSetUsers = (action: React.SetStateAction<User[]>) => {
-    setUsers(prev => {
-        const next = typeof action === 'function' ? action(prev) : action;
-        StorageService.saveUsers(next);
-        return next;
-    });
-  };
-
-  const handleSetPredictions = (action: React.SetStateAction<Prediction[]>) => {
-    setPredictions(prev => {
-        const next = typeof action === 'function' ? action(prev) : action;
-        StorageService.savePredictions(next);
-        return next;
-    });
-  };
-
-  const handleSetTransactions = (action: React.SetStateAction<PaymentTransaction[]>) => {
-    setTransactions(prev => {
-        const next = typeof action === 'function' ? action(prev) : action;
-        StorageService.saveTransactions(next);
-        return next;
-    });
-  };
-
-  const handleSetBlogPosts = (action: React.SetStateAction<BlogPost[]>) => {
-    setBlogPosts(prev => {
-        const next = typeof action === 'function' ? action(prev) : action;
-        StorageService.saveBlogPosts(next);
-        return next;
-    });
-  };
 
   // Scroll to top on route change
   useEffect(() => {
@@ -1886,7 +1934,7 @@ const AppContent: React.FC = () => {
   const handleLogin = (e: React.FormEvent, email: string) => {
     e.preventDefault();
     
-    // Check if user exists in our local storage
+    // Check if user exists in our local "database" (mock data + registered users)
     const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (existingUser) {
@@ -1897,7 +1945,7 @@ const AppContent: React.FC = () => {
             navigate('/dashboard');
         }
     } else {
-      // Create a temp free user if email not found
+      // Fallback for demo purposes if email not found (creates a temp free user)
       const newUser: User = {
         id: 'u_' + Date.now(),
         name: 'New User',
@@ -1907,8 +1955,7 @@ const AppContent: React.FC = () => {
         joinDate: new Date().toISOString().slice(0, 10),
         subscriptionExpiryDate: null
       };
-      // Use the wrapped setter to save to storage
-      handleSetUsers((prev) => [...prev, newUser]);
+      setUsers([...users, newUser]);
       setUser(newUser);
       navigate('/dashboard');
     }
@@ -1926,8 +1973,7 @@ const AppContent: React.FC = () => {
           joinDate: new Date().toISOString().slice(0, 10),
           subscriptionExpiryDate: null
       };
-      // Use the wrapped setter to save to storage
-      handleSetUsers((prev) => [...prev, newUser]);
+      setUsers(prev => [...prev, newUser]);
       setUser(newUser); // Auto login
       navigate('/dashboard');
     }
@@ -1963,7 +2009,7 @@ const AppContent: React.FC = () => {
                 user={user} 
                 predictions={predictions} 
                 transactions={transactions} 
-                setTransactions={handleSetTransactions} 
+                setTransactions={setTransactions} 
             />
         } />
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
@@ -1976,13 +2022,13 @@ const AppContent: React.FC = () => {
           <AdminDashboardPage 
             user={user} 
             predictions={predictions} 
-            setPredictions={handleSetPredictions}
+            setPredictions={setPredictions}
             transactions={transactions}
-            setTransactions={handleSetTransactions}
+            setTransactions={setTransactions}
             users={users}
-            setUsers={handleSetUsers}
+            setUsers={setUsers}
             blogPosts={blogPosts}
-            setBlogPosts={handleSetBlogPosts}
+            setBlogPosts={setBlogPosts}
           />
         } />
       </Routes>

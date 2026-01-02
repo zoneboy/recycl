@@ -1,4 +1,4 @@
-import { Plan, Tipster, SubscriptionTier } from "../types";
+import { Plan, Tipster } from "../types";
 
 export const MOCK_TIPSTERS: Tipster[] = [
   {
