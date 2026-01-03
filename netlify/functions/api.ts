@@ -59,7 +59,7 @@ export const handler = async (event: HandlerEvent) => {
     const sql = getSql();
 
     // --- Auth ---
-    
+
     // 1. Send OTP Endpoint
     if (path === 'auth/send-otp' && event.httpMethod === 'POST') {
       const { email } = data;
@@ -93,6 +93,7 @@ export const handler = async (event: HandlerEvent) => {
 
       // In a real app, send email via SendGrid/AWS SES.
       // For this demo, we return the code in the response so the user can see it.
+      console.log(`[DEBUG] OTP for ${email}: ${code}`);
       return response(200, { success: true, message: 'OTP sent to email', debug_otp: code });
     }
 
