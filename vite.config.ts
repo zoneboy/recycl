@@ -1,6 +1,6 @@
 // ============================================================================
 // FILE: vite.config.ts
-// PURPOSE: Secure Vite configuration without API key exposure
+// PURPOSE: Secure Vite configuration - Fixed build error
 // ============================================================================
 
 import path from 'path';
@@ -22,7 +22,7 @@ export default defineConfig({
   },
   plugins: [react()],
   
-
+  
   
   resolve: {
     alias: {
@@ -42,15 +42,14 @@ export default defineConfig({
         }
       }
     },
-    // Minify and optimize
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console.logs in production
-      }
-    },
+    // ✅ FIX: Use esbuild instead of terser (faster and built-in)
+    minify: 'esbuild', // Changed from 'terser' to 'esbuild'
+    
     // Source maps for debugging (optional)
-    sourcemap: false, // Set to true if you need debugging in production
+    sourcemap: false,
+    
+    // Target modern browsers
+    target: 'es2020',
   },
   
   // Environment variable prefix (only VITE_ vars are exposed to client)
