@@ -18,7 +18,8 @@
     "@neondatabase/serverless": "^0.9.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.13"
+    "nodemailer": "^6.9.13",
+    "isomorphic-dompurify": "^2.19.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

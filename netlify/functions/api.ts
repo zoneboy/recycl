@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { GoogleGenAI } from "@google/genai";
+import { sanitize } from 'isomorphic-dompurify';
 
 interface HandlerEvent {
   httpMethod: string;
@@ -280,12 +281,27 @@ export const handler = async (event: HandlerEvent) => {
         if (!email) return response(400, { error: 'Email is required' });
 
         try {
-            const users = await sql`SELECT id, name FROM users WHERE email = ${email}`;
+            const users = await sql`SELECT id, name, reset_otp_expiry FROM users WHERE email = ${email}`;
             
             // Security: Don't reveal if user exists, but here we process if they do
             if (users.length > 0) {
+                const user = users[0];
+                const now = Date.now();
+                const OTP_DURATION = 15 * 60 * 1000;
+                
+                // RATE LIMITING: Check if an OTP was sent recently (last 60 seconds)
+                // We infer 'createdAt' from the 'reset_otp_expiry' assuming constant 15min duration.
+                if (user.reset_otp_expiry) {
+                    const expiry = new Date(user.reset_otp_expiry).getTime();
+                    const estimatedCreatedAt = expiry - OTP_DURATION;
+                    // Allow 5 second buffer for execution time
+                    if (now - estimatedCreatedAt < 60 * 1000) {
+                        return response(429, { error: 'Please wait 1 minute before requesting another code.' });
+                    }
+                }
+
                 const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit OTP
-                const expiry = Date.now() + 15 * 60 * 1000; // 15 minutes
+                const expiry = Date.now() + OTP_DURATION; // 15 minutes
 
                 // DB Update
                 try {
@@ -303,7 +319,7 @@ export const handler = async (event: HandlerEvent) => {
                         `
                         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                             <h2 style="color: #008751;">Reset Your Password</h2>
-                            <p>Hello ${users[0].name},</p>
+                            <p>Hello ${user.name},</p>
                             <p>You requested to reset your password. Use the code below to proceed:</p>
                             <div style="background: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border-radius: 8px;">
                                 ${otp}
@@ -345,6 +361,7 @@ export const handler = async (event: HandlerEvent) => {
             `;
 
             if (users.length === 0) {
+                // Note: In a robust system we would increment a 'failed_attempts' counter here
                 return response(400, { error: 'Invalid or expired OTP' });
             }
 
@@ -557,9 +574,16 @@ export const handler = async (event: HandlerEvent) => {
         const user = verifyToken(event.headers);
         if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
         const { id, title, excerpt, content, author, date, imageUrl, tier } = data;
+        
+        // SERVER-SIDE SANITIZATION: Protects against XSS attacks
+        const sanitizedContent = sanitize(content, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'b', 'i', 'blockquote', 'img'],
+            ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class']
+        });
+
         await sql`
             INSERT INTO blog_posts (id, title, excerpt, content, author, date, image_url, tier)
-            VALUES (${id}, ${title}, ${excerpt}, ${content}, ${author}, ${date}, ${imageUrl}, ${tier})
+            VALUES (${id}, ${title}, ${excerpt}, ${sanitizedContent}, ${author}, ${date}, ${imageUrl}, ${tier})
         `;
         return response(201, { success: true });
     }
