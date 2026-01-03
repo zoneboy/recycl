@@ -101,94 +101,109 @@ export const handler = async (event: HandlerEvent) => {
     // --- Auth ---
 
     // 1. Register Endpoint
-    if (path === 'auth/register' && event.httpMethod === 'POST') {
-      const { name, email, password, phoneNumber } = data;
-      
-      if (!name) return response(400, { error: 'Name is required' });
-      if (!email || !isValidEmail(email)) return response(400, { error: 'Invalid email format' });
-      if (!password) return response(400, { error: 'Password is required' });
-      
-      const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
-      if (existing.length > 0) return response(400, { error: 'Email already exists' });
+    // ============================================================================
+// FILE: netlify/functions/api.ts
+// PURPOSE: Fix JWT to include subscription information
+// ============================================================================
 
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const id = `u_${Date.now()}`;
-      const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
-      
-      await sql`
-        INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
-        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
-      `;
-      
-      // Send Welcome Email
-      try {
-          await sendEmail(
-              email,
-              'Welcome to Heptabet! ⚽️',
-              `
-              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto;">
-                  <div style="text-align: center; margin-bottom: 20px;">
-                      <h1 style="color: #008751; font-size: 28px; margin: 0;">Heptabet</h1>
-                  </div>
-                  <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 30px;">
-                      <h2 style="color: #333; margin-top: 0;">Welcome to the Winning Team!</h2>
-                      <p>Hello <strong>${name}</strong>,</p>
-                      <p>Your registration with Heptabet was successful. We are thrilled to have you on board.</p>
-                      <p>Here is what you can expect:</p>
-                      <ul style="color: #555;">
-                          <li>Daily expert football predictions</li>
-                          <li>AI-powered match analysis</li>
-                          <li>Transparent win/loss records</li>
-                      </ul>
-                      <p>Get ready to beat the bookies!</p>
-                      <br/>
-                      <div style="text-align: center;">
-                          <a href="https://heptabet.com" style="background-color: #008751; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
-                      </div>
-                  </div>
-                  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-                      © ${new Date().getFullYear()} Heptabet. All rights reserved.
-                  </p>
-              </div>
-              `
-          );
-      } catch (emailErr) {
-          console.error('Welcome Email Failed:', emailErr);
-          // Continue execution, do not fail registration just because email failed
-      }
+// UPDATE THESE SECTIONS IN YOUR api.ts FILE:
 
-      const token = jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
-      const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
-      
-      return response(201, { user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date }, token });
-    }
+// ============================================================================
+// 1. REGISTER ENDPOINT - Include subscription in JWT
+// ============================================================================
 
-    if (path === 'auth/login' && event.httpMethod === 'POST') {
-      const { email, password } = data;
-      const users = await sql`SELECT * FROM users WHERE email = ${email}`;
-      
-      if (users.length === 0) return response(401, { error: 'Invalid credentials' });
-      const user = users[0];
-      
-      const valid = await bcrypt.compare(password, user.password_hash);
-      if (!valid) return response(401, { error: 'Invalid credentials' });
-      
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
-      
-      return response(200, { 
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phoneNumber: user.phone_number,
-          subscription: user.subscription,
-          role: user.role,
-          joinDate: user.join_date,
-          subscriptionExpiryDate: user.subscription_expiry_date
-        }, 
-        token 
-      });
-    }
+if (path === 'auth/register' && event.httpMethod === 'POST') {
+  const { name, email, password, phoneNumber } = data;
+  
+  if (!name) return response(400, { error: 'Name is required' });
+  if (!email || !isValidEmail(email)) return response(400, { error: 'Invalid email format' });
+  if (!password) return response(400, { error: 'Password is required' });
+  
+  const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+  if (existing.length > 0) return response(400, { error: 'Email already exists' });
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const id = `u_${Date.now()}`;
+  const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
+  const subscription = 'Free'; // Default subscription
+  
+  await sql`
+    INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
+    VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, ${subscription}, ${role}, ${new Date().toISOString()})
+  `;
+  
+  // Send Welcome Email (existing code...)
+  try {
+    await sendEmail(email, 'Welcome to Heptabet! ⚽️', /* ... email html ... */);
+  } catch (emailErr) {
+    console.error('Welcome Email Failed:', emailErr);
+  }
+
+  // ✅ FIX: Include subscription in JWT token
+  const token = jwt.sign(
+    { 
+      id, 
+      email, 
+      role,
+      subscription  // ← ADD THIS
+    }, 
+    process.env.JWT_SECRET || 'secret-key', 
+    { expiresIn: '7d' }
+  );
+  
+  const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
+  
+  return response(201, { 
+    user: { 
+      ...user, 
+      phoneNumber: user.phone_number, 
+      joinDate: user.join_date, 
+      subscriptionExpiryDate: user.subscription_expiry_date 
+    }, 
+    token 
+  });
+}
+
+// ============================================================================
+// 2. LOGIN ENDPOINT - Include subscription in JWT
+// ============================================================================
+
+if (path === 'auth/login' && event.httpMethod === 'POST') {
+  const { email, password } = data;
+  const users = await sql`SELECT * FROM users WHERE email = ${email}`;
+  
+  if (users.length === 0) return response(401, { error: 'Invalid credentials' });
+  const user = users[0];
+  
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) return response(401, { error: 'Invalid credentials' });
+  
+  // ✅ FIX: Include subscription in JWT token
+  const token = jwt.sign(
+    { 
+      id: user.id, 
+      email: user.email, 
+      role: user.role,
+      subscription: user.subscription  // ← ADD THIS
+    }, 
+    process.env.JWT_SECRET || 'secret-key', 
+    { expiresIn: '7d' }
+  );
+  
+  return response(200, { 
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phone_number,
+      subscription: user.subscription,
+      role: user.role,
+      joinDate: user.join_date,
+      subscriptionExpiryDate: user.subscription_expiry_date
+    }, 
+    token 
+  });
+}
 
     // 2. Forgot Password Endpoint (Generate OTP)
     if (path === 'auth/forgot-password' && event.httpMethod === 'POST') {
@@ -387,29 +402,60 @@ export const handler = async (event: HandlerEvent) => {
        return response(201, { success: true });
     }
 
-    if (path.startsWith('transactions/') && event.httpMethod === 'PUT') {
-        const user = verifyToken(event.headers);
-        if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
-        const id = path.split('/')[1];
-        
-        await sql`UPDATE transactions SET status = ${data.status} WHERE id = ${id}`;
-        
-        if (data.status === 'Approved') {
-            const txs = await sql`SELECT user_id, plan_id FROM transactions WHERE id = ${id}`;
-            if (txs.length > 0) {
-                const tx = txs[0];
-                const expiry = new Date();
-                expiry.setDate(expiry.getDate() + 30);
-                await sql`
-                    UPDATE users 
-                    SET subscription = ${tx.plan_id}, subscription_expiry_date = ${expiry.toISOString()}
-                    WHERE id = ${tx.user_id}
-                `;
-            }
-        }
-        return response(200, { success: true });
-    }
+    // ============================================================================
+// 3. TRANSACTION APPROVAL - Regenerate token after upgrade
+// ============================================================================
 
+if (path.startsWith('transactions/') && event.httpMethod === 'PUT') {
+  const user = verifyToken(event.headers);
+  if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
+  const id = path.split('/')[1];
+  
+  await sql`UPDATE transactions SET status = ${data.status} WHERE id = ${id}`;
+  
+  if (data.status === 'Approved') {
+    const txs = await sql`SELECT user_id, plan_id FROM transactions WHERE id = ${id}`;
+    if (txs.length > 0) {
+      const tx = txs[0];
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + 30);
+      
+      // Update user subscription
+      await sql`
+        UPDATE users 
+        SET subscription = ${tx.plan_id}, subscription_expiry_date = ${expiry.toISOString()}
+        WHERE id = ${tx.user_id}
+      `;
+      
+      // ✅ NEW: Fetch updated user and generate new token
+      const updatedUser = (await sql`
+        SELECT id, email, role, subscription 
+        FROM users 
+        WHERE id = ${tx.user_id}
+      `)[0];
+      
+      const newToken = jwt.sign(
+        {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          subscription: updatedUser.subscription
+        },
+        process.env.JWT_SECRET || 'secret-key',
+        { expiresIn: '7d' }
+      );
+      
+      // Return new token so frontend can update
+      return response(200, { 
+        success: true, 
+        newToken,
+        message: 'Subscription upgraded successfully'
+      });
+    }
+  }
+  
+  return response(200, { success: true });
+}
     // --- Users ---
     if (path === 'users' && event.httpMethod === 'GET') {
         const user = verifyToken(event.headers);
@@ -429,21 +475,51 @@ export const handler = async (event: HandlerEvent) => {
         return response(200, mapped);
     }
 
-    if (path.startsWith('users/') && event.httpMethod === 'PUT') {
-        const user = verifyToken(event.headers);
-        if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
-        const id = path.split('/')[1];
-        
-        if (data.subscription) {
-            await sql`UPDATE users SET subscription = ${data.subscription} WHERE id = ${id}`;
-        }
-        
-        if (data.subscriptionExpiryDate !== undefined) {
-             await sql`UPDATE users SET subscription_expiry_date = ${data.subscriptionExpiryDate} WHERE id = ${id}`;
-        }
-        
-        return response(200, { success: true });
-    }
+    // ============================================================================
+// 4. UPDATE USER SUBSCRIPTION - Also return new token
+// ============================================================================
+
+if (path.startsWith('users/') && event.httpMethod === 'PUT') {
+  const user = verifyToken(event.headers);
+  if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
+  const userId = path.split('/')[1];
+  
+  if (data.subscription) {
+    await sql`UPDATE users SET subscription = ${data.subscription} WHERE id = ${userId}`;
+  }
+  
+  if (data.subscriptionExpiryDate !== undefined) {
+    await sql`UPDATE users SET subscription_expiry_date = ${data.subscriptionExpiryDate} WHERE id = ${userId}`;
+  }
+  
+  // ✅ NEW: Generate new token for the updated user
+  const updatedUser = (await sql`
+    SELECT id, email, role, subscription 
+    FROM users 
+    WHERE id = ${userId}
+  `)[0];
+  
+  if (updatedUser) {
+    const newToken = jwt.sign(
+      {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        subscription: updatedUser.subscription
+      },
+      process.env.JWT_SECRET || 'secret-key',
+      { expiresIn: '7d' }
+    );
+    
+    return response(200, { 
+      success: true, 
+      newToken,
+      message: 'User updated successfully'
+    });
+  }
+  
+  return response(200, { success: true });
+}
 
     if (path.startsWith('users/') && event.httpMethod === 'DELETE') {
         const user = verifyToken(event.headers);
