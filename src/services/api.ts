@@ -1,9 +1,8 @@
 import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, MatchStatus, SubscriptionTier } from '../types';
 
-// Use relative path '/api' for both dev and prod.
-// Dev: Vite proxy handles it.
-// Prod: Netlify redirect handles it.
-const API_URL = '/api';
+// Safely check for production environment to prevent "Cannot read properties of undefined (reading 'PROD')"
+const isProd = import.meta.env && import.meta.env.PROD;
+const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -25,13 +24,29 @@ export const api = {
     return res.json();
   },
 
-  async register(name: string, email: string, phoneNumber: string, password: string) {
+  async sendOtp(email: string): Promise<{ success: boolean; message: string; debug_otp?: string }> {
+    const res = await fetch(`${API_URL}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to send OTP');
+    }
+    return res.json();
+  },
+
+  async register(name: string, email: string, phoneNumber: string, password: string, otp: string) {
     const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phoneNumber, password })
+        body: JSON.stringify({ name, email, phoneNumber, password, otp })
     });
-    if (!res.ok) throw new Error('Registration failed');
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Registration failed');
+    }
     return res.json();
   },
 
@@ -127,6 +142,14 @@ export const api = {
   async getUsers(): Promise<User[]> {
       const res = await fetch(`${API_URL}/users`, { headers: getHeaders() });
       return res.ok ? res.json() : [];
+  },
+
+  async updateUserSubscription(id: string, subscription?: SubscriptionTier, subscriptionExpiryDate?: string | null) {
+      await fetch(`${API_URL}/users/${id}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify({ subscription, subscriptionExpiryDate })
+      });
   },
 
   async deleteUser(id: string) {

@@ -38,13 +38,13 @@ const verifyToken = (headers: Record<string, string | undefined>) => {
   }
 };
 
+const isValidEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
 export const handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return response(200, {});
 
-  // Clean the path to handle various routing scenarios (direct call vs rewrite)
-  // 1. Remove standard Netlify function prefix
-  // 2. Remove /api prefix (from frontend rewrite)
-  // 3. Remove leading slash
   const path = event.path
     .replace(/^\/\.netlify\/functions\/api/, '')
     .replace(/^\/api/, '')
@@ -59,21 +59,80 @@ export const handler = async (event: HandlerEvent) => {
     const sql = getSql();
 
     // --- Auth ---
+    
+    // 1. Send OTP Endpoint
+    if (path === 'auth/send-otp' && event.httpMethod === 'POST') {
+      const { email } = data;
+      
+      if (!email || !isValidEmail(email)) {
+        return response(400, { error: 'Invalid email format' });
+      }
+
+      // Check if user already exists
+      const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+      if (existing.length > 0) return response(400, { error: 'Email already registered' });
+
+      // Create verifications table if not exists
+      await sql`CREATE TABLE IF NOT EXISTS verifications (
+        email TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL
+      )`;
+
+      // Generate 6-digit OTP
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+      // Store/Update OTP
+      await sql`
+        INSERT INTO verifications (email, code, expires_at)
+        VALUES (${email}, ${code}, ${expiresAt.toISOString()})
+        ON CONFLICT (email) 
+        DO UPDATE SET code = ${code}, expires_at = ${expiresAt.toISOString()}
+      `;
+
+      // In a real app, send email via SendGrid/AWS SES.
+      // For this demo, we return the code in the response so the user can see it.
+      return response(200, { success: true, message: 'OTP sent to email', debug_otp: code });
+    }
+
+    // 2. Register Endpoint (with OTP verification)
     if (path === 'auth/register' && event.httpMethod === 'POST') {
-      const { name, email, password, phoneNumber } = data;
+      const { name, email, password, phoneNumber, otp } = data;
+      
+      // Validations
+      if (!name || name.length < 2) return response(400, { error: 'Name must be at least 2 characters' });
+      if (!isValidEmail(email)) return response(400, { error: 'Invalid email format' });
+      if (!password || password.length < 6) return response(400, { error: 'Password must be at least 6 characters' });
+      if (!phoneNumber || phoneNumber.length < 10) return response(400, { error: 'Invalid phone number' });
+      if (!otp) return response(400, { error: 'OTP is required' });
+
+      // Verify OTP
+      const verification = await sql`
+        SELECT * FROM verifications 
+        WHERE email = ${email} AND code = ${otp} AND expires_at > NOW()
+      `;
+
+      if (verification.length === 0) {
+        return response(400, { error: 'Invalid or expired OTP' });
+      }
+
+      // Double check user existence
       const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
       if (existing.length > 0) return response(400, { error: 'Email already exists' });
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = `u_${Date.now()}`;
       
-      // LOGIC CHANGE: Check for specific email to assign admin role
       const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
       
       await sql`
         INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
         VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
       `;
+      
+      // Cleanup verification code
+      await sql`DELETE FROM verifications WHERE email = ${email}`;
       
       const token = jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
       const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
