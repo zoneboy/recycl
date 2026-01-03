@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 
 interface HandlerEvent {
   httpMethod: string;
@@ -15,6 +16,17 @@ const getSql = () => {
   }
   return neon(process.env.DATABASE_URL);
 };
+
+// Configure Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 const response = (statusCode: number, body: any) => ({
   statusCode,
@@ -60,7 +72,7 @@ export const handler = async (event: HandlerEvent) => {
 
     // --- Auth ---
 
-    // 1. Send OTP Endpoint
+    // 1. Send OTP Endpoint (REAL EMAIL)
     if (path === 'auth/send-otp' && event.httpMethod === 'POST') {
       const { email } = data;
       
@@ -70,7 +82,7 @@ export const handler = async (event: HandlerEvent) => {
 
       // Check if user already exists
       const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
-      if (existing.length > 0) return response(400, { error: 'Email already registered. Please login.' });
+      if (existing.length > 0) return response(400, { error: 'Email already registered. Please sign in.' });
 
       // Create verifications table if not exists
       await sql`CREATE TABLE IF NOT EXISTS verifications (
@@ -83,7 +95,7 @@ export const handler = async (event: HandlerEvent) => {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
-      // Store/Update OTP
+      // Store/Update OTP in Database
       await sql`
         INSERT INTO verifications (email, code, expires_at)
         VALUES (${email}, ${code}, ${expiresAt.toISOString()})
@@ -91,9 +103,37 @@ export const handler = async (event: HandlerEvent) => {
         DO UPDATE SET code = ${code}, expires_at = ${expiresAt.toISOString()}
       `;
 
-      // In production, integrate SendGrid/AWS SES here.
-      // For testing, we return the code in the response.
-      return response(200, { success: true, message: 'OTP sent to email', debug_otp: code });
+      // Send Email via Nodemailer
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+        console.error("SMTP Configuration missing");
+        return response(500, { error: 'Server misconfiguration: SMTP settings missing.' });
+      }
+
+      try {
+        await transporter.sendMail({
+          from: `"Heptabet Support" <${process.env.SMTP_USER}>`,
+          to: email,
+          subject: 'Your Heptabet Verification Code',
+          text: `Your verification code is: ${code}. It expires in 10 minutes.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+              <h2 style="color: #008751; text-align: center;">Verify Your Account</h2>
+              <p style="font-size: 16px; color: #333;">Welcome to Heptabet! Use the code below to complete your registration:</p>
+              <div style="background-color: #f0fdf4; padding: 15px; text-align: center; border-radius: 5px; margin: 20px 0;">
+                <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #008751;">${code}</span>
+              </div>
+              <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 12px; color: #999; text-align: center;">If you didn't request this, please ignore this email.</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("Failed to send email:", emailError);
+        return response(500, { error: 'Failed to send verification email. Please try again later.' });
+      }
+
+      return response(200, { success: true, message: 'OTP sent to email' });
     }
 
     // 2. Register Endpoint (with OTP verification)

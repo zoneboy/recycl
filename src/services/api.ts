@@ -21,21 +21,21 @@ export const api = {
       body: JSON.stringify({ email, password })
     });
     if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Login failed');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Login failed');
     }
     return res.json();
   },
 
-  async sendOtp(email: string): Promise<{ success: boolean; message: string; debug_otp?: string }> {
+  async sendOtp(email: string): Promise<{ success: boolean; message: string }> {
     const res = await fetch(`${API_URL}/auth/send-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
     });
     if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to send OTP');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to send OTP');
     }
     return res.json();
   },
@@ -47,8 +47,8 @@ export const api = {
         body: JSON.stringify({ name, email, phoneNumber, password, otp })
     });
     if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Registration failed');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Registration failed');
     }
     return res.json();
   },
