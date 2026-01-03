@@ -6,12 +6,10 @@ const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
 export const generateMatchAnalysis = async (prediction: Prediction): Promise<string> => {
   try {
-    const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
         'Content-Type': 'application/json'
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
+    
     const response = await fetch(`${API_URL}/analyze`, {
       method: 'POST',
       headers,
