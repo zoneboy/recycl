@@ -1243,7 +1243,7 @@ const LoginPage: React.FC<{onLogin: (user: User) => void}> = ({ onLogin }) => {
       setError('');
       try {
           const { user } = await api.login(email, password);
-          // Removed localStorage.setItem('token', token) for security
+          
           onLogin(user);
       } catch (e: any) {
           setError(e.message || 'Invalid email or password');
@@ -1605,7 +1605,7 @@ const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister
             const fullPhoneNumber = `${countryCode}${cleanedNumber}`;
             
             const { user } = await api.register(username, email, fullPhoneNumber, password);
-            // Removed localStorage.setItem('token', token) for security
+            
             onRegister(user);
         } catch (e: any) {
             setError(e.message || "Registration failed. Email might be in use.");
