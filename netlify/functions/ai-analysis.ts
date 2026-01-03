@@ -124,10 +124,9 @@ Keep the tone confident, professional, and engaging for Nigerian bettors.
     let analysis: string;
     try {
       const result = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt,
-      });
-
+  model: 'gemini-1.5-flash',
+  contents: [{ role: 'user', parts: [{ text: prompt }] }],  // Proper format
+});
       clearTimeout(timeoutId);
       
       analysis = result.text || "Analysis temporarily unavailable. Please try again.";
