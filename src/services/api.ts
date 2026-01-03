@@ -6,10 +6,8 @@ const isProd = (import.meta as any).env && (import.meta as any).env.PROD;
 const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
   return {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    'Content-Type': 'application/json'
   };
 };
 
@@ -33,6 +31,13 @@ export const api = {
     });
     if (!res.ok) throw new Error('Registration failed');
     return res.json();
+  },
+
+  async logout() {
+    await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
   },
 
   async forgotPassword(email: string) {
@@ -62,8 +67,6 @@ export const api = {
   },
 
   async getCurrentUser(): Promise<User | null> {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
     try {
         const res = await fetch(`${API_URL}/auth/me`, { headers: getHeaders() });
         if (res.ok) return res.json();

@@ -1242,8 +1242,7 @@ const LoginPage: React.FC<{onLogin: (user: User) => void}> = ({ onLogin }) => {
       setLoading(true);
       setError('');
       try {
-          const { user, token } = await api.login(email, password);
-          localStorage.setItem('token', token);
+          const { user } = await api.login(email, password);
           onLogin(user);
       } catch (e: any) {
           setError(e.message || 'Invalid email or password');
@@ -1330,242 +1329,10 @@ const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister
     const navigate = useNavigate();
 
     const countryCodes = [
-        {"name":"Afghanistan","dial_code":"+93","code":"AF"},
-        {"name":"Albania","dial_code":"+355","code":"AL"},
-        {"name":"Algeria","dial_code":"+213","code":"DZ"},
-        {"name":"AmericanSamoa","dial_code":"+1 684","code":"AS"},
-        {"name":"Andorra","dial_code":"+376","code":"AD"},
-        {"name":"Angola","dial_code":"+244","code":"AO"},
-        {"name":"Anguilla","dial_code":"+1 264","code":"AI"},
-        {"name":"Antigua and Barbuda","dial_code":"+1 268","code":"AG"},
-        {"name":"Argentina","dial_code":"+54","code":"AR"},
-        {"name":"Armenia","dial_code":"+374","code":"AM"},
-        {"name":"Aruba","dial_code":"+297","code":"AW"},
-        {"name":"Australia","dial_code":"+61","code":"AU"},
-        {"name":"Austria","dial_code":"+43","code":"AT"},
-        {"name":"Azerbaijan","dial_code":"+994","code":"AZ"},
-        {"name":"Bahamas","dial_code":"+1 242","code":"BS"},
-        {"name":"Bahrain","dial_code":"+973","code":"BH"},
-        {"name":"Bangladesh","dial_code":"+880","code":"BD"},
-        {"name":"Barbados","dial_code":"+1 246","code":"BB"},
-        {"name":"Belarus","dial_code":"+375","code":"BY"},
-        {"name":"Belgium","dial_code":"+32","code":"BE"},
-        {"name":"Belize","dial_code":"+501","code":"BZ"},
-        {"name":"Benin","dial_code":"+229","code":"BJ"},
-        {"name":"Bermuda","dial_code":"+1 441","code":"BM"},
-        {"name":"Bhutan","dial_code":"+975","code":"BT"},
-        {"name":"Bolivia, Plurinational State of","dial_code":"+591","code":"BO"},
-        {"name":"Bosnia and Herzegovina","dial_code":"+387","code":"BA"},
-        {"name":"Botswana","dial_code":"+267","code":"BW"},
-        {"name":"Brazil","dial_code":"+55","code":"BR"},
-        {"name":"British Indian Ocean Territory","dial_code":"+246","code":"IO"},
-        {"name":"Brunei Darussalam","dial_code":"+673","code":"BN"},
-        {"name":"Bulgaria","dial_code":"+359","code":"BG"},
-        {"name":"Burkina Faso","dial_code":"+226","code":"BF"},
-        {"name":"Burundi","dial_code":"+257","code":"BI"},
-        {"name":"Cambodia","dial_code":"+855","code":"KH"},
-        {"name":"Cameroon","dial_code":"+237","code":"CM"},
-        {"name":"Canada","dial_code":"+1","code":"CA"},
-        {"name":"Cape Verde","dial_code":"+238","code":"CV"},
-        {"name":"Cayman Islands","dial_code":"+ 345","code":"KY"},
-        {"name":"Central African Republic","dial_code":"+236","code":"CF"},
-        {"name":"Chad","dial_code":"+235","code":"TD"},
-        {"name":"Chile","dial_code":"+56","code":"CL"},
-        {"name":"China","dial_code":"+86","code":"CN"},
-        {"name":"Christmas Island","dial_code":"+61","code":"CX"},
-        {"name":"Cocos (Keeling) Islands","dial_code":"+61","code":"CC"},
-        {"name":"Colombia","dial_code":"+57","code":"CO"},
-        {"name":"Comoros","dial_code":"+269","code":"KM"},
-        {"name":"Congo","dial_code":"+242","code":"CG"},
-        {"name":"Congo, The Democratic Republic of the","dial_code":"+243","code":"CD"},
-        {"name":"Cook Islands","dial_code":"+682","code":"CK"},
-        {"name":"Costa Rica","dial_code":"+506","code":"CR"},
-        {"name":"Cote d'Ivoire","dial_code":"+225","code":"CI"},
-        {"name":"Croatia","dial_code":"+385","code":"HR"},
-        {"name":"Cuba","dial_code":"+53","code":"CU"},
-        {"name":"Cyprus","dial_code":"+537","code":"CY"},
-        {"name":"Czech Republic","dial_code":"+420","code":"CZ"},
-        {"name":"Denmark","dial_code":"+45","code":"DK"},
-        {"name":"Djibouti","dial_code":"+253","code":"DJ"},{"name":"Dominica","dial_code":"+1 767","code":"DM"},
-        {"name":"Dominican Republic","dial_code":"+1 849","code":"DO"},
-        {"name":"Ecuador","dial_code":"+593","code":"EC"},
-        {"name":"Egypt","dial_code":"+20","code":"EG"},
-        {"name":"El Salvador","dial_code":"+503","code":"SV"},
-        {"name":"Equatorial Guinea","dial_code":"+240","code":"GQ"},
-        {"name":"Eritrea","dial_code":"+291","code":"ER"},
-        {"name":"Estonia","dial_code":"+372","code":"EE"},
-        {"name":"Ethiopia","dial_code":"+251","code":"ET"},
-        {"name":"Falkland Islands (Malvinas)","dial_code":"+500","code":"FK"},
-        {"name":"Faroe Islands","dial_code":"+298","code":"FO"},
-        {"name":"Fiji","dial_code":"+679","code":"FJ"},
-        {"name":"Finland","dial_code":"+358","code":"FI"},
-        {"name":"France","dial_code":"+33","code":"FR"},
-        {"name":"French Guiana","dial_code":"+594","code":"GF"},
-        {"name":"French Polynesia","dial_code":"+689","code":"PF"},
-        {"name":"Gabon","dial_code":"+241","code":"GA"},
-        {"name":"Gambia","dial_code":"+220","code":"GM"},
-        {"name":"Georgia","dial_code":"+995","code":"GE"},
-        {"name":"Germany","dial_code":"+49","code":"DE"},
-        {"name":"Ghana","dial_code":"+233","code":"GH"},
-        {"name":"Gibraltar","dial_code":"+350","code":"GI"},
-        {"name":"Greece","dial_code":"+30","code":"GR"},
-        {"name":"Greenland","dial_code":"+299","code":"GL"},
-        {"name":"Grenada","dial_code":"+1 473","code":"GD"},
-        {"name":"Guadeloupe","dial_code":"+590","code":"GP"},
-        {"name":"Guam","dial_code":"+1 671","code":"GU"},
-        {"name":"Guatemala","dial_code":"+502","code":"GT"},
-        {"name":"Guernsey","dial_code":"+44","code":"GG"},
-        {"name":"Guinea","dial_code":"+224","code":"GN"},
-        {"name":"Guinea-Bissau","dial_code":"+245","code":"GW"},
-        {"name":"Guyana","dial_code":"+595","code":"GY"},
-        {"name":"Haiti","dial_code":"+509","code":"HT"},
-        {"name":"Holy See (Vatican City State)","dial_code":"+379","code":"VA"},
-        {"name":"Honduras","dial_code":"+504","code":"HN"},
-        {"name":"Hong Kong","dial_code":"+852","code":"HK"},
-        {"name":"Hungary","dial_code":"+36","code":"HU"},
-        {"name":"Iceland","dial_code":"+354","code":"IS"},
-        {"name":"India","dial_code":"+91","code":"IN"},
-        {"name":"Indonesia","dial_code":"+62","code":"ID"},
-        {"name":"Iran, Islamic Republic of","dial_code":"+98","code":"IR"},
-        {"name":"Iraq","dial_code":"+964","code":"IQ"},
-        {"name":"Ireland","dial_code":"+353","code":"IE"},
-        {"name":"Isle of Man","dial_code":"+44","code":"IM"},
-        {"name":"Israel","dial_code":"+972","code":"IL"},
-        {"name":"Italy","dial_code":"+39","code":"IT"},
-        {"name":"Jamaica","dial_code":"+1 876","code":"JM"},
-        {"name":"Japan","dial_code":"+81","code":"JP"},
-        {"name":"Jersey","dial_code":"+44","code":"JE"},
-        {"name":"Jordan","dial_code":"+962","code":"JO"},
-        {"name":"Kazakhstan","dial_code":"+7 7","code":"KZ"},
-        {"name":"Kenya","dial_code":"+254","code":"KE"},
-        {"name":"Kiribati","dial_code":"+686","code":"KI"},
-        {"name":"Korea, Democratic People's Republic of","dial_code":"+850","code":"KP"},
-        {"name":"Korea, Republic of","dial_code":"+82","code":"KR"},
-        {"name":"Kuwait","dial_code":"+965","code":"KW"},
-        {"name":"Kyrgyzstan","dial_code":"+996","code":"KG"},
-        {"name":"Lao People's Democratic Republic","dial_code":"+856","code":"LA"},
-        {"name":"Latvia","dial_code":"+371","code":"LV"},
-        {"name":"Lebanon","dial_code":"+961","code":"LB"},
-        {"name":"Lesotho","dial_code":"+266","code":"LS"},
-        {"name":"Liberia","dial_code":"+231","code":"LR"},
-        {"name":"Libyan Arab Jamahiriya","dial_code":"+218","code":"LY"},
-        {"name":"Liechtenstein","dial_code":"+423","code":"LI"},
-        {"name":"Lithuania","dial_code":"+370","code":"LT"},
-        {"name":"Luxembourg","dial_code":"+352","code":"LU"},
-        {"name":"Macao","dial_code":"+853","code":"MO"},
-        {"name":"Macedonia, The Former Yugoslav Republic of","dial_code":"+389","code":"MK"},
-        {"name":"Madagascar","dial_code":"+261","code":"MG"},
-        {"name":"Malawi","dial_code":"+265","code":"MW"},
-        {"name":"Malaysia","dial_code":"+60","code":"MY"},
-        {"name":"Maldives","dial_code":"+960","code":"MV"},
-        {"name":"Mali","dial_code":"+223","code":"ML"},
-        {"name":"Malta","dial_code":"+356","code":"MT"},
-        {"name":"Marshall Islands","dial_code":"+692","code":"MH"},
-        {"name":"Martinique","dial_code":"+596","code":"MQ"},
-        {"name":"Mauritania","dial_code":"+222","code":"MR"},
-        {"name":"Mauritius","dial_code":"+230","code":"MU"},
-        {"name":"Mayotte","dial_code":"+262","code":"YT"},
-        {"name":"Mexico","dial_code":"+52","code":"MX"},
-        {"name":"Micronesia, Federated States of","dial_code":"+691","code":"FM"},
-        {"name":"Moldova, Republic of","dial_code":"+373","code":"MD"},
-        {"name":"Monaco","dial_code":"+377","code":"MC"},
-        {"name":"Mongolia","dial_code":"+976","code":"MN"},
-        {"name":"Montenegro","dial_code":"+382","code":"ME"},
-        {"name":"Montserrat","dial_code":"+1664","code":"MS"},
-        {"name":"Morocco","dial_code":"+212","code":"MA"},
-        {"name":"Mozambique","dial_code":"+258","code":"MZ"},
-        {"name":"Myanmar","dial_code":"+95","code":"MM"},
-        {"name":"Namibia","dial_code":"+264","code":"NA"},
-        {"name":"Nauru","dial_code":"+674","code":"NR"},
-        {"name":"Nepal","dial_code":"+977","code":"NP"},
-        {"name":"Netherlands","dial_code":"+31","code":"NL"},
-        {"name":"Netherlands Antilles","dial_code":"+599","code":"AN"},
-        {"name":"New Caledonia","dial_code":"+687","code":"NC"},
-        {"name":"New Zealand","dial_code":"+64","code":"NZ"},
-        {"name":"Nicaragua","dial_code":"+505","code":"NI"},
-        {"name":"Niger","dial_code":"+227","code":"NE"},
         {"name":"Nigeria","dial_code":"+234","code":"NG"},
-        {"name":"Niue","dial_code":"+683","code":"NU"},{"name":"Norfolk Island","dial_code":"+672","code":"NF"},
-        {"name":"Northern Mariana Islands","dial_code":"+1 670","code":"MP"},
-        {"name":"Norway","dial_code":"+47","code":"NO"},
-        {"name":"Oman","dial_code":"+968","code":"OM"},
-        {"name":"Pakistan","dial_code":"+92","code":"PK"},
-        {"name":"Palau","dial_code":"+680","code":"PW"},
-        {"name":"Palestinian Territory, Occupied","dial_code":"+970","code":"PS"},
-        {"name":"Panama","dial_code":"+507","code":"PA"},
-        {"name":"Papua New Guinea","dial_code":"+675","code":"PG"},
-        {"name":"Paraguay","dial_code":"+595","code":"PY"},
-        {"name":"Peru","dial_code":"+51","code":"PE"},
-        {"name":"Philippines","dial_code":"+63","code":"PH"},
-        {"name":"Pitcairn","dial_code":"+872","code":"PN"},
-        {"name":"Poland","dial_code":"+48","code":"PL"},
-        {"name":"Portugal","dial_code":"+351","code":"PT"},
-        {"name":"Puerto Rico","dial_code":"+1 939","code":"PR"},
-        {"name":"Qatar","dial_code":"+974","code":"QA"},
-        {"name":"Réunion","dial_code":"+262","code":"RE"},
-        {"name":"Romania","dial_code":"+40","code":"RO"},
-        {"name":"Russia","dial_code":"+7","code":"RU"},
-        {"name":"Rwanda","dial_code":"+250","code":"RW"},{"name":"Saint Barthélemy","dial_code":"+590","code":"BL"},
-        {"name":"Saint Helena, Ascension and Tristan Da Cunha","dial_code":"+290","code":"SH"},
-        {"name":"Saint Kitts and Nevis","dial_code":"+1 869","code":"KN"},
-        {"name":"Saint Lucia","dial_code":"+1 758","code":"LC"},
-        {"name":"Saint Martin","dial_code":"+590","code":"MF"},
-        {"name":"Saint Pierre and Miquelon","dial_code":"+508","code":"PM"},
-        {"name":"Saint Vincent and the Grenadines","dial_code":"+1 784","code":"VC"},
-        {"name":"Samoa","dial_code":"+685","code":"WS"},
-        {"name":"San Marino","dial_code":"+378","code":"SM"},
-        {"name":"Sao Tome and Principe","dial_code":"+239","code":"ST"},
-        {"name":"Saudi Arabia","dial_code":"+966","code":"SA"},
-        {"name":"Senegal","dial_code":"+221","code":"SN"},
-        {"name":"Serbia","dial_code":"+381","code":"RS"},
-        {"name":"Seychelles","dial_code":"+248","code":"SC"},
-        {"name":"Sierra Leone","dial_code":"+232","code":"SL"},
-        {"name":"Singapore","dial_code":"+65","code":"SG"},
-        {"name":"Slovakia","dial_code":"+421","code":"SK"},
-        {"name":"Slovenia","dial_code":"+386","code":"SI"},
-        {"name":"Solomon Islands","dial_code":"+677","code":"SB"},
-        {"name":"Somalia","dial_code":"+252","code":"SO"},
-        {"name":"South Africa","dial_code":"+27","code":"ZA"},
-        {"name":"South Georgia and the South Sandwich Islands","dial_code":"+500","code":"GS"},
-        {"name":"Spain","dial_code":"+34","code":"ES"},
-        {"name":"Sri Lanka","dial_code":"+94","code":"LK"},
-        {"name":"Sudan","dial_code":"+249","code":"SD"},
-        {"name":"Suriname","dial_code":"+597","code":"SR"},
-        {"name":"Svalbard and Jan Mayen","dial_code":"+47","code":"SJ"},
-        {"name":"Swaziland","dial_code":"+268","code":"SZ"},
-        {"name":"Sweden","dial_code":"+46","code":"SE"},
-        {"name":"Switzerland","dial_code":"+41","code":"CH"},
-        {"name":"Syrian Arab Republic","dial_code":"+963","code":"SY"},
-        {"name":"Taiwan, Province of China","dial_code":"+886","code":"TW"},
-        {"name":"Tajikistan","dial_code":"+992","code":"TJ"},
-        {"name":"Tanzania, United Republic of","dial_code":"+255","code":"TZ"},
-        {"name":"Thailand","dial_code":"+66","code":"TH"},
-        {"name":"Timor-Leste","dial_code":"+670","code":"TL"},
-        {"name":"Togo","dial_code":"+228","code":"TG"},
-        {"name":"Tokelau","dial_code":"+690","code":"TK"},
-        {"name":"Tonga","dial_code":"+676","code":"TO"},
-        {"name":"Trinidad and Tobago","dial_code":"+1 868","code":"TT"},
-        {"name":"Tunisia","dial_code":"+216","code":"TN"},
-        {"name":"Turkey","dial_code":"+90","code":"TR"},
-        {"name":"Turkmenistan","dial_code":"+993","code":"TM"},
-        {"name":"Turks and Caicos Islands","dial_code":"+1 649","code":"TC"},
-        {"name":"Tuvalu","dial_code":"+688","code":"TV"},
-        {"name":"Uganda","dial_code":"+256","code":"UG"},
-        {"name":"Ukraine","dial_code":"+380","code":"UA"},
-        {"name":"United Arab Emirates","dial_code":"+971","code":"AE"},{"name":"United Kingdom","dial_code":"+44","code":"GB"},
+        {"name":"United Kingdom","dial_code":"+44","code":"GB"},
         {"name":"United States","dial_code":"+1","code":"US"},
-        {"name":"Uruguay","dial_code":"+598","code":"UY"},
-        {"name":"Uzbekistan","dial_code":"+998","code":"UZ"},
-        {"name":"Vanuatu","dial_code":"+678","code":"VU"},
-        {"name":"Venezuela, Bolivarian Republic of","dial_code":"+58","code":"VE"},
-        {"name":"Viet Nam","dial_code":"+84","code":"VN"},
-        {"name":"Virgin Islands, British","dial_code":"+1 284","code":"VG"},
-        {"name":"Virgin Islands, U.S.","dial_code":"+1 340","code":"VI"},
-        {"name":"Wallis and Futuna","dial_code":"+681","code":"WF"},
-        {"name":"Yemen","dial_code":"+967","code":"YE"},
-        {"name":"Zambia","dial_code":"+260","code":"ZM"},
-        {"name":"Zimbabwe","dial_code":"+263","code":"ZW"}
-    ].filter(c => c.dial_code).sort((a, b) => a.name.localeCompare(b.name));
+    ];
 
     const validatePassword = (pwd: string) => {
         if (pwd.length < 8) return "Password must be at least 8 characters long.";
@@ -1580,13 +1347,11 @@ const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister
         e.preventDefault();
         setError(null);
 
-        // Phone Validation
         if (phoneNumber.length < 7) {
             setError("Please enter a valid phone number.");
             return;
         }
 
-        // Password Validation
         const pwdError = validatePassword(password);
         if (pwdError) {
             setError(pwdError);
@@ -1600,12 +1365,10 @@ const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister
 
         setIsSending(true);
         try {
-            // Remove leading zeros from input if present and combine with country code
             const cleanedNumber = phoneNumber.replace(/^0+/, '');
             const fullPhoneNumber = `${countryCode}${cleanedNumber}`;
             
-            const { user, token } = await api.register(username, email, fullPhoneNumber, password);
-            localStorage.setItem('token', token);
+            const { user } = await api.register(username, email, fullPhoneNumber, password);
             onRegister(user);
         } catch (e: any) {
             setError(e.message || "Registration failed. Email might be in use.");
@@ -1737,3 +1500,715 @@ const RegisterPage: React.FC<{onRegister: (user: User) => void}> = ({ onRegister
         </div>
     );
 };
+
+const ContactPage: React.FC = () => {
+    const [submitted, setSubmitted] = useState(false);
+    
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitted(true);
+    };
+
+    return (
+        <div className="py-16 px-4 max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">Get in Touch</h1>
+                <p className="text-xl text-gray-500">Have questions about our VIP plans or need support? We're here to help.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h2>
+                    <div className="space-y-6">
+                        <div className="flex items-start">
+                            <div className="bg-green-100 p-3 rounded-lg mr-4">
+                                <Mail className="text-naija-green" size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900">Email Us</h3>
+                                <p className="text-gray-600">support@heptabet.com</p>
+                                <p className="text-gray-600">vip@heptabet.com</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start">
+                            <div className="bg-green-100 p-3 rounded-lg mr-4">
+                                <MessageSquare className="text-naija-green" size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900">WhatsApp Support</h3>
+                                <p className="text-gray-600">08133262312</p>
+                                <p className="text-sm text-gray-500">Available Mon-Fri, 9am - 6pm</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                    {submitted ? (
+                        <div className="text-center py-12">
+                            <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle2 className="text-naija-green" size={32} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Message Sent!</h2>
+                            <p className="text-gray-600">Thank you for reaching out. Our team will get back to you within 24 hours.</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <input type="text" required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none" placeholder="Your name" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                <input type="email" required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none" placeholder="your@email.com" />
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none">
+                                    <option>General Inquiry</option>
+                                    <option>VIP Subscription Help</option>
+                                    <option>Payment Issue</option>
+                                    <option>Technical Support</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                                <textarea required rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-naija-green focus:border-naija-green outline-none" placeholder="How can we help you?"></textarea>
+                            </div>
+                            <button type="submit" className="w-full bg-naija-green text-white font-bold py-3 rounded-lg hover:bg-green-700 transition">
+                                Send Message
+                            </button>
+                        </form>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TermsPage: React.FC = () => (
+    <div className="max-w-4xl mx-auto px-4 py-16">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Terms of Service</h1>
+        <div className="bg-white rounded-xl shadow-sm p-8 prose prose-green max-w-none">
+            <p><strong>Last Updated: November 2023</strong></p>
+            <h3>1. Introduction</h3>
+            <p>Welcome to Heptabet. By accessing our website, you agree to be bound by these Terms of Service.</p>
+            
+            <h3>2. Betting Disclaimer</h3>
+            <p>Heptabet provides predictions for informational purposes only. We do not guarantee winnings. Betting involves risk, and you should only bet what you can afford to lose.</p>
+            
+            <h3>3. Subscriptions</h3>
+            <p>Premium subscriptions are billed monthly. Refunds are processed according to our Money-Back Guarantee policy within the first 7 days.</p>
+            
+            <h3>4. User Accounts</h3>
+            <p>You are responsible for maintaining the confidentiality of your account credentials.</p>
+        </div>
+    </div>
+);
+
+const PrivacyPage: React.FC = () => (
+    <div className="max-w-4xl mx-auto px-4 py-16">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Privacy Policy</h1>
+        <div className="bg-white rounded-xl shadow-sm p-8 prose prose-green max-w-none">
+            <h3>1. Information We Collect</h3>
+            <p>We collect information you provide directly to us, such as when you create an account, subscribe to our service, or contact us for support.</p>
+            
+            <h3>2. How We Use Your Information</h3>
+            <p>We use your information to provide, maintain, and improve our services, process transactions, and send you technical notices.</p>
+            
+            <h3>3. Data Security</h3>
+            <p>We implement reasonable security measures to protect your personal information.</p>
+        </div>
+    </div>
+);
+
+const AdminDashboardPage: React.FC<{
+  user: User | null;
+  predictions: Prediction[];
+  setPredictions: React.Dispatch<React.SetStateAction<Prediction[]>>;
+  transactions: PaymentTransaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<PaymentTransaction[]>>;
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  blogPosts: BlogPost[];
+  setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>;
+}> = ({ user, predictions, setPredictions, transactions, setTransactions, users, setUsers, blogPosts, setBlogPosts }) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('predictions');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddBlogModal, setShowAddBlogModal] = useState(false);
+  
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    type: 'prediction' | 'user' | 'blog' | null;
+    id: string | null;
+  }>({ isOpen: false, type: null, id: null });
+
+  // Receipt Modal State
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
+  
+  // Admin Notification Settings State
+  const [adminSettings, setAdminSettings] = useState({
+    emailNotifications: {
+      newPayment: true,
+      subscriptionExpiry: false,
+      newUser: true
+    },
+    inAppNotifications: {
+      newPayment: true,
+      subscriptionExpiry: true,
+      newUser: false
+    }
+  });
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  if (!user || user.role !== 'admin') return null;
+
+  // -- Handlers --
+
+  const handleAddPrediction = (newPrediction: Prediction) => {
+    setPredictions(prev => [newPrediction, ...prev]);
+    setShowAddModal(false);
+  };
+
+  const handleAddBlogPost = (newPost: BlogPost) => {
+    setBlogPosts(prev => [newPost, ...prev]);
+    setShowAddBlogModal(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+
+    if (deleteModal.type === 'prediction') {
+        await api.deletePrediction(deleteModal.id);
+        setPredictions(prev => prev.filter(p => p.id !== deleteModal.id));
+    } else if (deleteModal.type === 'user') {
+        await api.deleteUser(deleteModal.id);
+        setUsers(prev => prev.filter(u => u.id !== deleteModal.id));
+    } else if (deleteModal.type === 'blog') {
+        await api.deleteBlogPost(deleteModal.id);
+        setBlogPosts(prev => prev.filter(b => b.id !== deleteModal.id));
+    }
+    setDeleteModal({ isOpen: false, type: null, id: null });
+  };
+
+  const openDeleteModal = (type: 'prediction' | 'user' | 'blog', id: string) => {
+      setDeleteModal({ isOpen: true, type, id });
+  };
+
+  const openReceiptModal = (url: string) => {
+      setSelectedReceiptUrl(url);
+      setReceiptModalOpen(true);
+  };
+
+  const handleApproveTransaction = async (id: string) => {
+    await api.updateTransactionStatus(id, PaymentStatus.APPROVED);
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: PaymentStatus.APPROVED } : t));
+  };
+
+  const handleRejectTransaction = async (id: string) => {
+    await api.updateTransactionStatus(id, PaymentStatus.REJECTED);
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: PaymentStatus.REJECTED } : t));
+  };
+
+  const handleUpdateStatus = async (id: string, status: MatchStatus) => {
+    await api.updatePredictionStatus(id, status);
+    setPredictions(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+  };
+  
+  const handleUpdateResult = async (id: string, result: PredictionResult) => {
+    await api.updatePredictionResult(id, result);
+    setPredictions(prev => prev.map(p => p.id === id ? { ...p, result } : p));
+  };
+
+  const handleUpgradeUser = async (userId: string, tier: SubscriptionTier) => {
+      try {
+          await api.updateUserSubscription(userId, tier);
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription: tier } : u));
+      } catch (e) {
+          console.error(e);
+          alert('Failed to update subscription');
+      }
+  };
+
+  const handleUpdateExpiry = async (userId: string, newDate: string) => {
+      try {
+          // If clearing the date (empty string), send null
+          const dateToSend = newDate === '' ? null : newDate;
+          await api.updateUserSubscription(userId, undefined, dateToSend);
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionExpiryDate: dateToSend } : u));
+      } catch (e) {
+          console.error(e);
+          alert('Failed to update expiry date');
+      }
+  };
+
+  return (
+    <div className="py-8 px-4 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+           <p className="text-gray-500">Manage predictions, users, and settings.</p>
+        </div>
+        
+        {/* Context Aware Actions */}
+        <div className="flex gap-2">
+            {activeTab === 'predictions' && (
+                <button 
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-naija-green text-white px-4 py-2 rounded-lg font-medium flex items-center hover:bg-green-700 transition shadow-sm"
+                >
+                    <Plus size={18} className="mr-2" /> New Prediction
+                </button>
+            )}
+            {activeTab === 'blog' && (
+                <button 
+                    onClick={() => setShowAddBlogModal(true)}
+                    className="bg-naija-green text-white px-4 py-2 rounded-lg font-medium flex items-center hover:bg-green-700 transition shadow-sm"
+                >
+                    <Plus size={18} className="mr-2" /> New Post
+                </button>
+            )}
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="text-gray-500 text-sm font-medium uppercase">Total Tips</div>
+          <div className="text-3xl font-bold text-gray-900 mt-1">{predictions.length}</div>
+        </div>
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="text-gray-500 text-sm font-medium uppercase">Pending Tips</div>
+          <div className="text-3xl font-bold text-yellow-600 mt-1">
+            {predictions.filter(p => p.result === PredictionResult.PENDING).length}
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+           <div className="text-gray-500 text-sm font-medium uppercase">Blog Posts</div>
+           <div className="text-3xl font-bold text-blue-600 mt-1">
+                {blogPosts.length}
+           </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="text-gray-500 text-sm font-medium uppercase">Total Users</div>
+          <div className="text-3xl font-bold text-gray-900 mt-1">{users.length}</div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="border-b border-gray-200 px-6 py-4 flex gap-6 overflow-x-auto">
+          {['predictions', 'payments', 'users', 'blog', 'settings'].map(tab => (
+              <button 
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`font-medium pb-2 -mb-4 px-1 capitalize ${activeTab === tab ? 'text-naija-green border-b-2 border-naija-green' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                {tab}
+              </button>
+          ))}
+        </div>
+        
+        <div className="p-6">
+          {activeTab === 'predictions' && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tip</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {predictions.map(pred => (
+                    <tr key={pred.id}>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {pred.date} <br/> <span className="text-xs">{pred.time}</span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {pred.homeTeam} vs {pred.awayTeam}
+                          <div className="text-xs text-gray-400 font-normal">{pred.league}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="font-bold">{pred.tip}</div>
+                          <div className="text-xs text-gray-500">@{pred.odds.toFixed(2)} • {pred.minTier}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                         <select 
+                            value={pred.status}
+                            onChange={(e) => handleUpdateStatus(pred.id, e.target.value as MatchStatus)}
+                            className="border-gray-300 rounded text-xs py-1 px-2 border focus:ring-naija-green focus:border-naija-green bg-white"
+                         >
+                            {Object.values(MatchStatus).map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
+                         </select>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                         <select 
+                            value={pred.result}
+                            onChange={(e) => handleUpdateResult(pred.id, e.target.value as PredictionResult)}
+                            className={`border-gray-300 rounded text-xs py-1 px-2 border focus:ring-naija-green focus:border-naija-green font-bold
+                              ${pred.result === PredictionResult.WON ? 'text-green-700 bg-green-50' : 
+                                pred.result === PredictionResult.LOST ? 'text-red-700 bg-red-50' : 'text-gray-700 bg-white'}`}
+                         >
+                            {Object.values(PredictionResult).map(r => <option key={r as string} value={r as string}>{r as string}</option>)}
+                         </select>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onClick={() => openDeleteModal('prediction', pred.id)} className="text-red-600 hover:text-red-900 p-2 bg-red-50 rounded hover:bg-red-100 transition">
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {transactions.map(tx => (
+                            <tr key={tx.id}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <div className="font-bold">{tx.userName}</div>
+                                    <div className="text-xs text-gray-500">{tx.date}</div>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {tx.amount} <span className="text-xs text-gray-500">({tx.planId})</span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                        tx.status === PaymentStatus.APPROVED ? 'bg-green-100 text-green-800' :
+                                        tx.status === PaymentStatus.REJECTED ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                    }`}>{tx.status}</span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center gap-2">
+                                     {tx.receiptUrl && (
+                                        <button 
+                                            onClick={() => openReceiptModal(tx.receiptUrl)} 
+                                            className="text-blue-600 hover:text-blue-900 bg-blue-50 p-1.5 rounded" 
+                                            title="View Receipt"
+                                        >
+                                            <Eye size={18} />
+                                        </button>
+                                    )}
+                                    {tx.status === PaymentStatus.PENDING && (
+                                        <>
+                                            <button onClick={() => handleApproveTransaction(tx.id)} className="text-green-600 hover:text-green-900 bg-green-50 p-1.5 rounded"><CheckCircle size={18} /></button>
+                                            <button onClick={() => handleRejectTransaction(tx.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 rounded"><XCircle size={18} /></button>
+                                        </>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+              </div>
+          )}
+
+          {activeTab === 'users' && (
+             <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {users.map(u => (
+                            <tr key={u.id}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.name}</td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                    <select 
+                                        value={u.subscription}
+                                        onChange={(e) => handleUpgradeUser(u.id, e.target.value as SubscriptionTier)}
+                                        className="text-xs border-gray-300 rounded py-1 px-2 border focus:ring-naija-green focus:border-naija-green bg-white"
+                                    >
+                                        {Object.values(SubscriptionTier).map(tier => (
+                                            <option key={tier as string} value={tier as string}>{tier as string}</option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <input 
+                                        type="date"
+                                        className="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-naija-green focus:border-naija-green w-32"
+                                        value={u.subscriptionExpiryDate ? new Date(u.subscriptionExpiryDate).toISOString().split('T')[0] : ''}
+                                        onChange={(e) => handleUpdateExpiry(u.id, e.target.value)}
+                                    />
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    {u.id !== user.id && (
+                                        <button onClick={() => openDeleteModal('user', u.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded hover:bg-red-100 transition">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </div>
+          )}
+
+          {activeTab === 'blog' && (
+              <div className="overflow-x-auto">
+                 <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Post</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {blogPosts.map(post => (
+                            <tr key={post.id}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <div className="font-bold">{post.title}</div>
+                                    <div className="text-xs text-gray-500">{post.date}</div>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${getTierBadgeColor(post.tier)}`}>
+                                        {post.tier}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button onClick={() => openDeleteModal('blog', post.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded hover:bg-red-100 transition">
+                                        <Trash2 size={18} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                 </table>
+              </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="max-w-2xl">
+               <h3 className="text-lg font-bold text-gray-900 mb-4">Notification Preferences</h3>
+               <div className="space-y-6">
+                 <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Mail className="text-gray-500" size={20} />
+                        <h4 className="font-semibold text-gray-900">Email Notifications</h4>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <span className="text-gray-700">New Payment Submissions</span>
+                            <input 
+                                type="checkbox" 
+                                checked={adminSettings.emailNotifications.newPayment}
+                                onChange={(e) => setAdminSettings({...adminSettings, emailNotifications: {...adminSettings.emailNotifications, newPayment: e.target.checked}})}
+                                className="w-5 h-5 text-naija-green rounded focus:ring-naija-green border-gray-300"
+                            />
+                        </label>
+                    </div>
+                 </div>
+                 <button className="bg-naija-green text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 transition">
+                    Save Changes
+                 </button>
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {showAddModal && <AddPredictionModal onClose={() => setShowAddModal(false)} onAdd={handleAddPrediction} />}
+      {showAddBlogModal && <AddBlogPostModal onClose={() => setShowAddBlogModal(false)} onAdd={handleAddBlogPost} />}
+
+      <DeleteConfirmationModal 
+        isOpen={deleteModal.isOpen} 
+        onClose={() => setDeleteModal({ isOpen: false, type: null, id: null })} 
+        onConfirm={confirmDelete} 
+        title={`Delete Item`}
+        message={`Are you sure you want to delete this item? This action cannot be undone.`}
+      />
+
+      {/* Receipt Modal */}
+      {receiptModalOpen && selectedReceiptUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-4" onClick={() => setReceiptModalOpen(false)}>
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-900">Payment Receipt</h3>
+                    <button onClick={() => setReceiptModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-4 overflow-y-auto bg-gray-50 flex justify-center">
+                    <img src={selectedReceiptUrl} alt="Receipt Proof" className="max-w-full h-auto rounded shadow-sm" />
+                </div>
+            </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Initial Data Fetch
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // 1. Check Session
+        const currentUser = await api.getCurrentUser();
+        setUser(currentUser);
+
+        // 2. Fetch Public Data
+        const [preds, posts] = await Promise.all([
+            api.getPredictions(),
+            api.getBlogPosts()
+        ]);
+        setPredictions(preds);
+        setBlogPosts(posts);
+      } catch (e) {
+        console.error("Init Error", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // Fetch Protected Data on User Change
+  useEffect(() => {
+    if (user) {
+        api.getTransactions().then(setTransactions);
+        if (user.role === 'admin') {
+            api.getUsers().then(setUsers);
+        }
+    }
+  }, [user]);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  const handleLogin = (loggedInUser: User) => {
+      setUser(loggedInUser);
+      if (loggedInUser.role === 'admin') {
+          navigate('/admin');
+      } else {
+          navigate('/dashboard');
+      }
+  };
+
+  const handleRegister = (newUser: User) => {
+      setUser(newUser);
+      navigate('/dashboard');
+  }
+
+  const handleLogout = async () => {
+    await api.logout();
+    setUser(null);
+    navigate('/');
+  };
+
+  const getCurrentPageId = () => {
+      const path = location.pathname;
+      if (path === '/') return 'home';
+      if (path.startsWith('/blog')) return 'blog';
+      return path.substring(1);
+  };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <Loader2 className="animate-spin text-naija-green" size={48} />
+          </div>
+      );
+  }
+
+  return (
+    <Layout 
+        user={user} 
+        onLogout={handleLogout} 
+        currentPage={getCurrentPageId()}
+        onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
+    >
+      <Routes>
+        <Route path="/" element={<HomePage user={user} predictions={predictions} />} />
+        <Route path="/predictions" element={<PredictionsPage user={user} predictions={predictions} />} />
+        <Route path="/expert" element={<ExpertPage predictions={predictions} />} />
+        <Route path="/pricing" element={<PricingPage user={user} />} />
+        <Route path="/blog" element={<BlogPage blogPosts={blogPosts} />} />
+        <Route path="/blog/:id" element={<BlogPostPage user={user} blogPosts={blogPosts} />} />
+        <Route path="/dashboard" element={
+            <DashboardPage 
+                user={user} 
+                predictions={predictions} 
+                transactions={transactions} 
+                setTransactions={setTransactions} 
+            />
+        } />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+        <Route path="/register" element={<RegisterPage onRegister={handleRegister} />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/admin" element={
+          <AdminDashboardPage 
+            user={user} 
+            predictions={predictions} 
+            setPredictions={setPredictions}
+            transactions={transactions}
+            setTransactions={setTransactions}
+            users={users}
+            setUsers={setUsers}
+            blogPosts={blogPosts}
+            setBlogPosts={setBlogPosts}
+          />
+        } />
+      </Routes>
+    </Layout>
+  );
+};
+
+export default function App() {
+  return (
+    <HashRouter>
+      <AppContent />
+    </HashRouter>
+  );
+}
