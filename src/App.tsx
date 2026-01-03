@@ -1045,8 +1045,8 @@ const LoginPage: React.FC<{onLogin: (user: User) => void}> = ({ onLogin }) => {
           const { user, token } = await api.login(email, password);
           localStorage.setItem('token', token);
           onLogin(user);
-      } catch (e) {
-          setError('Invalid email or password');
+      } catch (e: any) {
+          setError(e.message || 'Invalid email or password');
       } finally {
           setLoading(false);
       }

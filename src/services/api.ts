@@ -20,7 +20,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    if (!res.ok) throw new Error('Login failed');
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Login failed');
+    }
     return res.json();
   },
 
@@ -31,8 +34,8 @@ export const api = {
       body: JSON.stringify({ email })
     });
     if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to send OTP');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to send OTP');
     }
     return res.json();
   },
@@ -44,8 +47,8 @@ export const api = {
         body: JSON.stringify({ name, email, phoneNumber, password, otp })
     });
     if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Registration failed');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Registration failed');
     }
     return res.json();
   },

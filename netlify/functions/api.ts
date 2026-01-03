@@ -70,7 +70,7 @@ export const handler = async (event: HandlerEvent) => {
 
       // Check if user already exists
       const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
-      if (existing.length > 0) return response(400, { error: 'Email already registered' });
+      if (existing.length > 0) return response(400, { error: 'Email already registered. Please login.' });
 
       // Create verifications table if not exists
       await sql`CREATE TABLE IF NOT EXISTS verifications (
@@ -91,9 +91,8 @@ export const handler = async (event: HandlerEvent) => {
         DO UPDATE SET code = ${code}, expires_at = ${expiresAt.toISOString()}
       `;
 
-      // In a real app, send email via SendGrid/AWS SES.
-      // For this demo, we return the code in the response so the user can see it.
-      console.log(`[DEBUG] OTP for ${email}: ${code}`);
+      // In production, integrate SendGrid/AWS SES here.
+      // For testing, we return the code in the response.
       return response(200, { success: true, message: 'OTP sent to email', debug_otp: code });
     }
 
@@ -115,7 +114,7 @@ export const handler = async (event: HandlerEvent) => {
       `;
 
       if (verification.length === 0) {
-        return response(400, { error: 'Invalid or expired OTP' });
+        return response(400, { error: 'Invalid or expired OTP code' });
       }
 
       // Double check user existence
