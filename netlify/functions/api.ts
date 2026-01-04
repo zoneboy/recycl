@@ -103,6 +103,27 @@ const sendEmail = async (to: string, subject: string, html: string) => {
     }
 };
 
+// --- Rate Limiting ---
+const rateLimits = new Map<string, { count: number, resetTime: number }>();
+
+const checkRateLimit = (ip: string, action: string, limit: number, windowMs: number): boolean => {
+    const key = `${ip}:${action}`;
+    const now = Date.now();
+    const record = rateLimits.get(key);
+
+    if (!record || now > record.resetTime) {
+        rateLimits.set(key, { count: 1, resetTime: now + windowMs });
+        return true;
+    }
+
+    if (record.count >= limit) {
+        return false;
+    }
+
+    record.count++;
+    return true;
+};
+
 export const handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return response(200, {});
 
@@ -120,11 +141,6 @@ export const handler = async (event: HandlerEvent) => {
     const sql = getSql();
 
     // --- CSRF Protection Middleware ---
-    // Strategy: Double Submit Cookie variant using Signed JWT Claim.
-    // 1. JWT contains 'csrfSecret'.
-    // 2. Request Header 'X-CSRF-Token' must match 'csrfSecret' in JWT.
-    // This removes the need for a database column.
-    
     const isStateChange = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.httpMethod);
     const isPublicAuth = [
         'auth/login', 
@@ -145,10 +161,8 @@ export const handler = async (event: HandlerEvent) => {
             return response(403, { error: 'Missing CSRF token' });
         }
 
-        // Validate against the secret embedded in the JWT
         if (!decoded.csrfSecret || decoded.csrfSecret !== csrfHeader) {
             console.error(`[CSRF] Mismatch for user ${decoded.id}. Header: ${csrfHeader}, JWT: ${decoded.csrfSecret}`);
-            // If mismatch, it might be an old token. User needs to refresh/re-login.
             return response(403, { error: 'Invalid CSRF token. Please refresh the page.' });
         }
     }
@@ -211,7 +225,15 @@ export const handler = async (event: HandlerEvent) => {
     }
 
     // --- Auth ---
+    
+    // IP extraction for rate limiting
+    const clientIp = event.headers['client-ip'] || event.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+
     if (path === 'auth/register' && event.httpMethod === 'POST') {
+      if (!checkRateLimit(clientIp, 'register', 5, 60 * 60 * 1000)) { // 5 per hour
+          return response(429, { error: 'Too many registration attempts. Please try again later.' });
+      }
+
       const { name, email, password, phoneNumber } = data;
       if (!name || !email || !password) return response(400, { error: 'Missing fields' });
       if (!isValidEmail(email)) return response(400, { error: 'Invalid email' });
@@ -223,13 +245,11 @@ export const handler = async (event: HandlerEvent) => {
       const id = `u_${Date.now()}`;
       const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
       
-      // Removed csrf_token column from INSERT to prevent 500 error if column missing in DB
       await sql`
         INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
         VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
       `;
       
-      // Embed CSRF secret in JWT
       const csrfSecret = crypto.randomBytes(32).toString('hex');
       const token = createToken({ id, email, role, csrfSecret });
       
@@ -239,13 +259,17 @@ export const handler = async (event: HandlerEvent) => {
         201, 
         { 
             user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date }, 
-            csrfToken: csrfSecret // Send to client for header use
+            csrfToken: csrfSecret 
         },
         { 'Set-Cookie': createCookie(token) }
       );
     }
 
     if (path === 'auth/login' && event.httpMethod === 'POST') {
+      if (!checkRateLimit(clientIp, 'login', 10, 15 * 60 * 1000)) { // 10 per 15 min
+          return response(429, { error: 'Too many login attempts. Please try again later.' });
+      }
+
       const { email, password } = data;
       const users = await sql`SELECT * FROM users WHERE email = ${email}`;
       if (users.length === 0) return response(401, { error: 'Invalid credentials' });
@@ -262,7 +286,6 @@ export const handler = async (event: HandlerEvent) => {
         }
       }
 
-      // No DB update for CSRF. Purely stateless JWT based.
       const csrfSecret = crypto.randomBytes(32).toString('hex');
       const token = createToken({ id: user.id, email: user.email, role: user.role, csrfSecret });
       
@@ -285,6 +308,19 @@ export const handler = async (event: HandlerEvent) => {
       );
     }
 
+    if (path === 'auth/forgot-password' && event.httpMethod === 'POST') {
+        if (!checkRateLimit(clientIp, 'forgot-password', 3, 60 * 60 * 1000)) { // 3 per hour
+            return response(429, { error: 'Too many password reset requests. Please try again later.' });
+        }
+        
+        const { email } = data;
+        if (!email) return response(400, { error: 'Email is required' });
+
+        // Placeholder for password reset logic
+        // In a real implementation: Check user existence, generate OTP, save to DB, send email
+        return response(200, { message: 'If an account exists, a reset code has been sent.' });
+    }
+
     if (path === 'auth/logout' && event.httpMethod === 'POST') {
         return response(
             200, 
@@ -300,7 +336,6 @@ export const handler = async (event: HandlerEvent) => {
       const u = await getUserAndEnforceExpiry(decoded.id);
       if (!u) return response(404, { error: 'User not found' });
 
-      // Handle Legacy Tokens: If JWT lacks csrfSecret, upgrade it.
       let csrfSecret = decoded.csrfSecret;
       let headers: Record<string, string> = {};
 
@@ -488,7 +523,7 @@ export const handler = async (event: HandlerEvent) => {
     }
 
     // Default Fallback
-    if (['auth/forgot-password', 'auth/reset-password'].includes(path)) {
+    if (['auth/reset-password'].includes(path)) {
         return response(404, { error: 'Not found' });
     }
 
