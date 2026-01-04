@@ -617,14 +617,19 @@ export const handler = async (event: HandlerEvent) => {
     if (path.startsWith('users/') && event.httpMethod === 'PUT') {
         const user = verifyToken(event.headers);
         if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
-        const id = path.split('/')[1];
         
+        const id = path.split('/')[1];
+        if (!id) return response(400, { error: 'Invalid User ID' });
+
         if (data.subscription) {
             await sql`UPDATE users SET subscription = ${data.subscription} WHERE id = ${id}`;
         }
         
-        if (data.subscriptionExpiryDate !== undefined) {
-             await sql`UPDATE users SET subscription_expiry_date = ${data.subscriptionExpiryDate} WHERE id = ${id}`;
+        // Handle expiry date update carefully
+        // Check for presence of property to differentiate between setting it to null/value vs not updating it
+        if ('subscriptionExpiryDate' in data) {
+             const expiry = data.subscriptionExpiryDate === "" ? null : data.subscriptionExpiryDate;
+             await sql`UPDATE users SET subscription_expiry_date = ${expiry} WHERE id = ${id}`;
         }
         
         return response(200, { success: true });
