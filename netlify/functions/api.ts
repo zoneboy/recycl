@@ -132,7 +132,7 @@ export const handler = async (event: HandlerEvent) => {
         // if (!user || user.subscription !== 'Premium') ...
 
         try {
-            const apiKey = process.env.GEMINI_API_KEY;
+            const apiKey = process.env.API_KEY;
             if (!apiKey) {
                 console.error("Server API Key missing");
                 return response(500, { error: 'Server configuration error' });
@@ -242,6 +242,13 @@ export const handler = async (event: HandlerEvent) => {
       
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) return response(401, { error: 'Invalid credentials' });
+
+      // Clean up any stale OTPs on successful login to maintain database hygiene
+      try {
+        await sql`UPDATE users SET reset_otp = NULL, reset_otp_expiry = NULL WHERE id = ${user.id}`;
+      } catch (dbErr) {
+        console.warn('OTP Cleanup Warning:', dbErr);
+      }
       
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
       

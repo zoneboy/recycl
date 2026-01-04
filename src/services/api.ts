@@ -25,6 +25,14 @@ export const api = {
     return res.json();
   },
 
+  async logout() {
+    await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    localStorage.removeItem('token');
+  },
+
   async register(name: string, email: string, phoneNumber: string, password: string) {
     const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',

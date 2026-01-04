@@ -3,16 +3,7 @@ import { Prediction } from "../types";
 
 export const generateMatchAnalysis = async (prediction: Prediction): Promise<string> => {
   try {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    
-    // Fail gracefully if no key instead of crashing the app
-    if (!apiKey) {
-      console.warn("Gemini API Key is missing");
-      return "AI Analysis unavailable (System configuration error).";
-    }
-
-    // Initialize client here to prevent app crash on top-level evaluation
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const prompt = `
       Act as a professional football analyst for the Nigerian betting market.
@@ -32,9 +23,9 @@ export const generateMatchAnalysis = async (prediction: Prediction): Promise<str
       contents: prompt,
     });
 
-    return response.text || "Analysis currently unavailable. Please check back later.";
+    return response.text || "Analysis currently unavailable.";
   } catch (error) {
     console.error("Error generating analysis:", error);
-    return "AI Analysis is temporarily unavailable due to high demand. Please try again.";
+    return "AI Analysis is temporarily unavailable.";
   }
 };
