@@ -37,6 +37,12 @@ const createCookie = (token: string, days: number = 7) => {
   return `token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${days * 24 * 60 * 60}; ${isProd ? 'Secure' : ''}`;
 };
 
+const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
+
+const createToken = (payload: any) => {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+};
+
 const verifyToken = (headers: Record<string, string | undefined>) => {
   const cookieHeader = headers['cookie'] || headers['Cookie'];
   let token = null;
@@ -54,7 +60,7 @@ const verifyToken = (headers: Record<string, string | undefined>) => {
   if (!token) return null;
 
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'secret-key') as any;
+    return jwt.verify(token, JWT_SECRET) as any;
   } catch (e) {
     return null;
   }
@@ -114,6 +120,11 @@ export const handler = async (event: HandlerEvent) => {
     const sql = getSql();
 
     // --- CSRF Protection Middleware ---
+    // Strategy: Double Submit Cookie variant using Signed JWT Claim.
+    // 1. JWT contains 'csrfSecret'.
+    // 2. Request Header 'X-CSRF-Token' must match 'csrfSecret' in JWT.
+    // This removes the need for a database column.
+    
     const isStateChange = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.httpMethod);
     const isPublicAuth = [
         'auth/login', 
@@ -127,18 +138,18 @@ export const handler = async (event: HandlerEvent) => {
         const decoded = verifyToken(event.headers);
         if (!decoded) return response(401, { error: 'Unauthorized' });
 
-        const csrfTokenHeader = event.headers['x-csrf-token'] || event.headers['X-CSRF-Token'];
+        const csrfHeader = event.headers['x-csrf-token'] || event.headers['X-CSRF-Token'];
         
-        if (!csrfTokenHeader) {
-            console.error(`[CSRF] Missing token for user ${decoded.id}`);
+        if (!csrfHeader) {
+            console.error(`[CSRF] Missing header for user ${decoded.id}`);
             return response(403, { error: 'Missing CSRF token' });
         }
 
-        const userResult = await sql`SELECT csrf_token FROM users WHERE id = ${decoded.id}`;
-        
-        if (userResult.length === 0 || userResult[0].csrf_token !== csrfTokenHeader) {
-            console.error(`[CSRF] Invalid token for user ${decoded.id}`);
-            return response(403, { error: 'Invalid or expired CSRF token' });
+        // Validate against the secret embedded in the JWT
+        if (!decoded.csrfSecret || decoded.csrfSecret !== csrfHeader) {
+            console.error(`[CSRF] Mismatch for user ${decoded.id}. Header: ${csrfHeader}, JWT: ${decoded.csrfSecret}`);
+            // If mismatch, it might be an old token. User needs to refresh/re-login.
+            return response(403, { error: 'Invalid CSRF token. Please refresh the page.' });
         }
     }
 
@@ -211,19 +222,25 @@ export const handler = async (event: HandlerEvent) => {
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = `u_${Date.now()}`;
       const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
-      const csrfToken = crypto.randomBytes(32).toString('hex');
-
+      
+      // Removed csrf_token column from INSERT to prevent 500 error if column missing in DB
       await sql`
-        INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date, csrf_token)
-        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()}, ${csrfToken})
+        INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
+        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
       `;
       
-      const token = jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
+      // Embed CSRF secret in JWT
+      const csrfSecret = crypto.randomBytes(32).toString('hex');
+      const token = createToken({ id, email, role, csrfSecret });
+      
       const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
       
       return response(
         201, 
-        { user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date }, csrfToken },
+        { 
+            user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date }, 
+            csrfToken: csrfSecret // Send to client for header use
+        },
         { 'Set-Cookie': createCookie(token) }
       );
     }
@@ -245,10 +262,9 @@ export const handler = async (event: HandlerEvent) => {
         }
       }
 
-      const csrfToken = crypto.randomBytes(32).toString('hex');
-      await sql`UPDATE users SET csrf_token = ${csrfToken} WHERE id = ${user.id}`;
-      
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
+      // No DB update for CSRF. Purely stateless JWT based.
+      const csrfSecret = crypto.randomBytes(32).toString('hex');
+      const token = createToken({ id: user.id, email: user.email, role: user.role, csrfSecret });
       
       return response(
         200, 
@@ -263,7 +279,7 @@ export const handler = async (event: HandlerEvent) => {
             joinDate: user.join_date,
             subscriptionExpiryDate: user.subscription_expiry_date
           },
-          csrfToken
+          csrfToken: csrfSecret
         }, 
         { 'Set-Cookie': createCookie(token) }
       );
@@ -284,11 +300,14 @@ export const handler = async (event: HandlerEvent) => {
       const u = await getUserAndEnforceExpiry(decoded.id);
       if (!u) return response(404, { error: 'User not found' });
 
-      // IMPORTANT FIX: Generate CSRF token for existing users who lack one
-      let token = u.csrf_token;
-      if (!token) {
-          token = crypto.randomBytes(32).toString('hex');
-          await sql`UPDATE users SET csrf_token = ${token} WHERE id = ${u.id}`;
+      // Handle Legacy Tokens: If JWT lacks csrfSecret, upgrade it.
+      let csrfSecret = decoded.csrfSecret;
+      let headers: Record<string, string> = {};
+
+      if (!csrfSecret) {
+          csrfSecret = crypto.randomBytes(32).toString('hex');
+          const newToken = createToken({ ...decoded, csrfSecret });
+          headers['Set-Cookie'] = createCookie(newToken);
       }
       
       return response(200, {
@@ -302,8 +321,8 @@ export const handler = async (event: HandlerEvent) => {
             joinDate: u.join_date,
             subscriptionExpiryDate: u.subscription_expiry_date
           },
-          csrfToken: token
-      });
+          csrfToken: csrfSecret
+      }, headers);
     }
 
     // --- Predictions ---
@@ -379,8 +398,7 @@ export const handler = async (event: HandlerEvent) => {
         return response(200, { success: true });
     }
 
-    // --- Transactions & Users & Blog (Simplified for brevity but protected) ---
-    // (Keeping existing logic for brevity but ensuring verifyToken/CSRF checks remain in place via middleware block above)
+    // --- Transactions & Users & Blog ---
     
     if (path === 'transactions' && event.httpMethod === 'GET') {
       const user = verifyToken(event.headers);
@@ -471,7 +489,6 @@ export const handler = async (event: HandlerEvent) => {
 
     // Default Fallback
     if (['auth/forgot-password', 'auth/reset-password'].includes(path)) {
-        // These are handled earlier but typescript flow needs return
         return response(404, { error: 'Not found' });
     }
 
