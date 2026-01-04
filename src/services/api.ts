@@ -1,36 +1,58 @@
 import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, MatchStatus, SubscriptionTier } from '../types';
 
-// Safely check for production environment to prevent "Cannot read properties of undefined (reading 'PROD')"
-// Cast import.meta to any to avoid TypeScript errors regarding missing 'env' property
+// Safely check for production environment
 const isProd = (import.meta as any).env && (import.meta as any).env.PROD;
 const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
+// Store CSRF token in memory. 
+// This is more secure than localStorage as it clears on tab close, 
+// and is re-fetched via getCurrentUser on page load.
+let _csrfToken = '';
+
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
+  
+  // If we have a CSRF token, attach it. 
+  // The backend requires this for POST/PUT/DELETE.
+  if (_csrfToken) {
+    headers['X-CSRF-Token'] = _csrfToken;
+  }
+
+  // We rely on HttpOnly cookies for the Auth Token, 
+  // so we don't strictly need to send Authorization header if the cookie works.
+  // However, for backward compatibility if you still use localStorage:
+  const localToken = localStorage.getItem('token');
+  if (localToken) {
+      headers['Authorization'] = `Bearer ${localToken}`;
+  }
+
+  return headers;
 };
 
 export const api = {
   // Auth
-  async login(email: string, password: string): Promise<{ user: User, token: string }> {
+  async login(email: string, password: string): Promise<{ user: User }> {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    if (!res.ok) throw new Error('Login failed');
-    return res.json();
-  },
-
-  async logout() {
-    await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    });
-    localStorage.removeItem('token');
+    
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Login failed' }));
+        throw new Error(err.error || 'Login failed');
+    }
+    
+    const data = await res.json();
+    // Capture the CSRF token from the response
+    if (data.csrfToken) {
+        _csrfToken = data.csrfToken;
+    }
+    // We don't need to store 'token' in localStorage anymore as it's in a cookie,
+    // but we can keep user data if needed.
+    return data;
   },
 
   async register(name: string, email: string, phoneNumber: string, password: string) {
@@ -39,8 +61,26 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phoneNumber, password })
     });
-    if (!res.ok) throw new Error('Registration failed');
-    return res.json();
+    
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Registration failed' }));
+        throw new Error(err.error || 'Registration failed');
+    }
+
+    const data = await res.json();
+    if (data.csrfToken) {
+        _csrfToken = data.csrfToken;
+    }
+    return data;
+  },
+
+  async logout() {
+    await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: getHeaders()
+    });
+    _csrfToken = '';
+    localStorage.removeItem('token'); // Clear legacy token if exists
   },
 
   async forgotPassword(email: string) {
@@ -70,11 +110,17 @@ export const api = {
   },
 
   async getCurrentUser(): Promise<User | null> {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
     try {
+        // We attempt to fetch 'me'. The backend will check the Cookie.
         const res = await fetch(`${API_URL}/auth/me`, { headers: getHeaders() });
-        if (res.ok) return res.json();
+        if (res.ok) {
+            const data = await res.json();
+            // Important: The backend sends a fresh CSRF token here if valid
+            if (data.csrfToken) {
+                _csrfToken = data.csrfToken;
+            }
+            return data.user || data;
+        }
         return null;
     } catch (e) {
         return null;
@@ -93,27 +139,34 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(prediction)
     });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add prediction');
+    }
     return res.json();
   },
 
   async deletePrediction(id: string) {
-    await fetch(`${API_URL}/predictions/${id}`, { method: 'DELETE', headers: getHeaders() });
+    const res = await fetch(`${API_URL}/predictions/${id}`, { method: 'DELETE', headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to delete');
   },
 
   async updatePredictionStatus(id: string, status: MatchStatus) {
-    await fetch(`${API_URL}/predictions/${id}`, {
+    const res = await fetch(`${API_URL}/predictions/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ status })
     });
+    if (!res.ok) throw new Error('Failed to update status');
   },
 
   async updatePredictionResult(id: string, result: PredictionResult) {
-    await fetch(`${API_URL}/predictions/${id}`, {
+    const res = await fetch(`${API_URL}/predictions/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ result })
     });
+    if (!res.ok) throw new Error('Failed to update result');
   },
 
   // Transactions
@@ -128,15 +181,20 @@ export const api = {
         headers: getHeaders(),
         body: JSON.stringify(transaction)
     });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add transaction');
+    }
     return res.json();
   },
 
   async updateTransactionStatus(id: string, status: string) {
-    await fetch(`${API_URL}/transactions/${id}`, {
+    const res = await fetch(`${API_URL}/transactions/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ status })
     });
+    if (!res.ok) throw new Error('Failed to update transaction');
   },
 
   // Blog
@@ -146,15 +204,20 @@ export const api = {
   },
 
   async addBlogPost(post: BlogPost) {
-      await fetch(`${API_URL}/blog`, {
+      const res = await fetch(`${API_URL}/blog`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify(post)
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add post');
+      }
   },
 
   async deleteBlogPost(id: string) {
-      await fetch(`${API_URL}/blog/${id}`, { method: 'DELETE', headers: getHeaders() });
+      const res = await fetch(`${API_URL}/blog/${id}`, { method: 'DELETE', headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to delete post');
   },
 
   // Users (Admin)
@@ -164,14 +227,16 @@ export const api = {
   },
 
   async updateUserSubscription(id: string, subscription?: SubscriptionTier, subscriptionExpiryDate?: string | null) {
-      await fetch(`${API_URL}/users/${id}`, {
+      const res = await fetch(`${API_URL}/users/${id}`, {
           method: 'PUT',
           headers: getHeaders(),
           body: JSON.stringify({ subscription, subscriptionExpiryDate })
       });
+      if (!res.ok) throw new Error('Failed to update user');
   },
 
   async deleteUser(id: string) {
-      await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: getHeaders() });
+      const res = await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to delete user');
   }
 };

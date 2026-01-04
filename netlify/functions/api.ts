@@ -120,6 +120,9 @@ export const handler = async (event: HandlerEvent) => {
     try { data = JSON.parse(event.body); } catch (e) {}
   }
 
+  // Debug Logging for Request
+  console.log(`[API REQUEST] ${event.httpMethod} ${path}`);
+
   try {
     const sql = getSql();
 
@@ -137,15 +140,30 @@ export const handler = async (event: HandlerEvent) => {
     if (isStateChange && !isPublicAuth) {
         // We verify auth token first to identify the user
         const decoded = verifyToken(event.headers);
-        if (!decoded) return response(401, { error: 'Unauthorized' });
+        if (!decoded) {
+            console.warn(`[CSRF] Unauthorized attempt on ${path}`);
+            return response(401, { error: 'Unauthorized' });
+        }
 
         const csrfTokenHeader = event.headers['x-csrf-token'] || event.headers['X-CSRF-Token'];
-        if (!csrfTokenHeader) return response(403, { error: 'Missing CSRF token' });
+        
+        // Debugging CSRF
+        if (!csrfTokenHeader) {
+            console.error(`[CSRF] Missing token header. Headers received:`, Object.keys(event.headers));
+            return response(403, { error: 'Missing CSRF token' });
+        }
 
         // Verify token against database
         const userResult = await sql`SELECT csrf_token FROM users WHERE id = ${decoded.id}`;
-        if (userResult.length === 0 || userResult[0].csrf_token !== csrfTokenHeader) {
-            return response(403, { error: 'Invalid or expired CSRF token' });
+        
+        if (userResult.length === 0) {
+             console.error(`[CSRF] User not found for ID: ${decoded.id}`);
+             return response(403, { error: 'Invalid user context' });
+        }
+
+        if (userResult[0].csrf_token !== csrfTokenHeader) {
+            console.error(`[CSRF] Mismatch. Expected: ${userResult[0].csrf_token}, Received: ${csrfTokenHeader}`);
+            return response(403, { error: 'Invalid or expired CSRF token. Please refresh the page.' });
         }
     }
 
