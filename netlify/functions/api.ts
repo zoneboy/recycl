@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { GoogleGenAI } from "@google/genai";
+import crypto from 'crypto';
 
 interface HandlerEvent {
   httpMethod: string;
@@ -23,7 +24,7 @@ const response = (statusCode: number, body: any, headers: Record<string, string>
   headers: {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CSRF-Token',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     ...headers
   },
@@ -122,6 +123,31 @@ export const handler = async (event: HandlerEvent) => {
   try {
     const sql = getSql();
 
+    // --- CSRF Protection Middleware ---
+    const isStateChange = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.httpMethod);
+    const isPublicAuth = [
+        'auth/login', 
+        'auth/register', 
+        'auth/forgot-password', 
+        'auth/reset-password'
+    ].includes(path);
+
+    // Skip CSRF check for public auth endpoints, but enforce for all other state-changing methods
+    if (isStateChange && !isPublicAuth) {
+        // We verify auth token first to identify the user
+        const decoded = verifyToken(event.headers);
+        if (!decoded) return response(401, { error: 'Unauthorized' });
+
+        const csrfTokenHeader = event.headers['x-csrf-token'] || event.headers['X-CSRF-Token'];
+        if (!csrfTokenHeader) return response(403, { error: 'Missing CSRF token' });
+
+        // Verify token against database
+        const userResult = await sql`SELECT csrf_token FROM users WHERE id = ${decoded.id}`;
+        if (userResult.length === 0 || userResult[0].csrf_token !== csrfTokenHeader) {
+            return response(403, { error: 'Invalid or expired CSRF token' });
+        }
+    }
+
     // --- Subscription Middleware / Helper ---
     // Fetches user and strictly checks/enforces expiry date
     const getUserAndEnforceExpiry = async (userId: string) => {
@@ -210,9 +236,12 @@ export const handler = async (event: HandlerEvent) => {
       const id = `u_${Date.now()}`;
       const role = email.toLowerCase() === 'admin@heptabet.com' ? 'admin' : 'user';
       
+      // Generate CSRF Token
+      const csrfToken = crypto.randomBytes(32).toString('hex');
+
       await sql`
-        INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date)
-        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()})
+        INSERT INTO users (id, name, email, password_hash, phone_number, subscription, role, join_date, csrf_token)
+        VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${phoneNumber}, 'Free', ${role}, ${new Date().toISOString()}, ${csrfToken})
       `;
       
       // Send Welcome Email
@@ -254,10 +283,13 @@ export const handler = async (event: HandlerEvent) => {
       const token = jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
       const user = (await sql`SELECT id, name, email, phone_number, subscription, role, join_date, subscription_expiry_date FROM users WHERE id = ${id}`)[0];
       
-      // Send token in Cookie only
+      // Send token in Cookie only, CSRF token in body
       return response(
         201, 
-        { user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date } },
+        { 
+          user: { ...user, phoneNumber: user.phone_number, joinDate: user.join_date, subscriptionExpiryDate: user.subscription_expiry_date },
+          csrfToken 
+        },
         { 'Set-Cookie': createCookie(token) }
       );
     }
@@ -281,11 +313,12 @@ export const handler = async (event: HandlerEvent) => {
         }
       }
 
-      // Clean up any stale OTPs on successful login
+      // Generate and store new CSRF token
+      const csrfToken = crypto.randomBytes(32).toString('hex');
       try {
-        await sql`UPDATE users SET reset_otp = NULL, reset_otp_expiry = NULL WHERE id = ${user.id}`;
+        await sql`UPDATE users SET csrf_token = ${csrfToken}, reset_otp = NULL, reset_otp_expiry = NULL WHERE id = ${user.id}`;
       } catch (dbErr) {
-        console.warn('OTP Cleanup Warning:', dbErr);
+        console.warn('DB Update Error:', dbErr);
       }
       
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
@@ -302,7 +335,8 @@ export const handler = async (event: HandlerEvent) => {
             role: user.role,
             joinDate: user.join_date,
             subscriptionExpiryDate: user.subscription_expiry_date
-          }
+          },
+          csrfToken
         }, 
         { 'Set-Cookie': createCookie(token) }
       );
@@ -407,14 +441,17 @@ export const handler = async (event: HandlerEvent) => {
       if (!u) return response(404, { error: 'User not found' });
       
       return response(200, {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          phoneNumber: u.phone_number,
-          subscription: u.subscription,
-          role: u.role,
-          joinDate: u.join_date,
-          subscriptionExpiryDate: u.subscription_expiry_date
+          user: {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            phoneNumber: u.phone_number,
+            subscription: u.subscription,
+            role: u.role,
+            joinDate: u.join_date,
+            subscriptionExpiryDate: u.subscription_expiry_date
+          },
+          csrfToken: u.csrf_token
       });
     }
 

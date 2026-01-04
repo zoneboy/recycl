@@ -4,9 +4,13 @@ import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, Match
 const isProd = (import.meta as any).env && (import.meta as any).env.PROD;
 const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
+// Store CSRF token in memory (retrieved on login/register/load)
+let _csrfToken = '';
+
 const getHeaders = () => {
   return {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': _csrfToken
     // Authorization header removed; using httpOnly cookies via browser credentials
   };
 };
@@ -20,7 +24,9 @@ export const api = {
       body: JSON.stringify({ email, password })
     });
     if (!res.ok) throw new Error('Login failed');
-    return res.json();
+    const data = await res.json();
+    if (data.csrfToken) _csrfToken = data.csrfToken;
+    return data;
   },
 
   async register(name: string, email: string, phoneNumber: string, password: string) {
@@ -30,14 +36,17 @@ export const api = {
         body: JSON.stringify({ name, email, phoneNumber, password })
     });
     if (!res.ok) throw new Error('Registration failed');
-    return res.json();
+    const data = await res.json();
+    if (data.csrfToken) _csrfToken = data.csrfToken;
+    return data;
   },
 
   async logout() {
     await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: getHeaders() // Include CSRF for logout as well
     });
+    _csrfToken = '';
   },
 
   async forgotPassword(email: string) {
@@ -69,7 +78,15 @@ export const api = {
   async getCurrentUser(): Promise<User | null> {
     try {
         const res = await fetch(`${API_URL}/auth/me`, { headers: getHeaders() });
-        if (res.ok) return res.json();
+        if (res.ok) {
+            const data = await res.json();
+            // Store CSRF token if present
+            if (data.csrfToken) {
+                _csrfToken = data.csrfToken;
+                return data.user;
+            }
+            return data.user || data;
+        }
         return null;
     } catch (e) {
         return null;
