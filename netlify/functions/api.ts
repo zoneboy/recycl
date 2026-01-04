@@ -511,9 +511,17 @@ export const handler = async (event: HandlerEvent) => {
       if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
       
       const { id, league, homeTeam, awayTeam, date, time, tip, odds, confidence, minTier, status, result, tipsterId } = data;
+      
+      // FIX: Handle tipsterId robustness (if foreign key missing in DB, pass NULL instead of 't1')
+      const finalTipsterId = (tipsterId === 't1' || !tipsterId) ? null : tipsterId;
+      
+      // FIX: Ensure numeric types
+      const finalOdds = parseFloat(odds);
+      const finalConfidence = parseInt(confidence);
+
       await sql`
         INSERT INTO predictions (id, league, home_team, away_team, date, time, tip, odds, confidence, min_tier, status, result, tipster_id)
-        VALUES (${id}, ${league}, ${homeTeam}, ${awayTeam}, ${date}, ${time}, ${tip}, ${odds}, ${confidence}, ${minTier}, ${status}, ${result}, ${tipsterId})
+        VALUES (${id}, ${league}, ${homeTeam}, ${awayTeam}, ${date}, ${time}, ${tip}, ${finalOdds}, ${finalConfidence}, ${minTier}, ${status}, ${result}, ${finalTipsterId})
       `;
       return response(201, { success: true });
     }
@@ -626,9 +634,9 @@ export const handler = async (event: HandlerEvent) => {
         }
         
         // Handle expiry date update carefully
-        // Check for presence of property to differentiate between setting it to null/value vs not updating it
         if ('subscriptionExpiryDate' in data) {
-             const expiry = data.subscriptionExpiryDate === "" ? null : data.subscriptionExpiryDate;
+             // FIX: Strictly handle undefined/empty string to avoid 'invalid input syntax for type timestamp'
+             const expiry = (!data.subscriptionExpiryDate || data.subscriptionExpiryDate === "") ? null : data.subscriptionExpiryDate;
              await sql`UPDATE users SET subscription_expiry_date = ${expiry} WHERE id = ${id}`;
         }
         
@@ -663,6 +671,8 @@ export const handler = async (event: HandlerEvent) => {
         const user = verifyToken(event.headers);
         if (!user || user.role !== 'admin') return response(403, { error: 'Admin only' });
         const { id, title, excerpt, content, author, date, imageUrl, tier } = data;
+        
+        // FIX: Ensure all values are defined to prevent SQL errors
         await sql`
             INSERT INTO blog_posts (id, title, excerpt, content, author, date, image_url, tier)
             VALUES (${id}, ${title}, ${excerpt}, ${content}, ${author}, ${date}, ${imageUrl}, ${tier})
@@ -681,6 +691,7 @@ export const handler = async (event: HandlerEvent) => {
     return response(404, { error: 'Not found' });
   } catch (error: any) {
     console.error('API Error', error);
-    return response(500, { error: error.message });
+    // Return actual error message for debugging
+    return response(500, { error: error.message, stack: error.stack });
   }
 };

@@ -112,13 +112,16 @@ const AddPredictionModal: React.FC<{onClose: () => void, onAdd: (p: Prediction) 
             ...formData as any,
             status: MatchStatus.SCHEDULED,
             result: PredictionResult.PENDING,
-            tipsterId: 't1' // Default admin
+            // Pass empty string or null for tipsterId if no explicit tipster system exists yet
+            // The backend is now updated to convert 't1' or empty to NULL
+            tipsterId: 't1' 
         };
         try {
             await api.addPrediction(newPrediction);
             onAdd(newPrediction);
-        } catch (e) {
-            alert('Failed to add prediction');
+        } catch (e: any) {
+            console.error("Add Prediction Error:", e);
+            alert('Failed to add prediction. Check console for details.');
         }
     };
 
