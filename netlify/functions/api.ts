@@ -129,7 +129,8 @@ export const handler = async (event: HandlerEvent) => {
         'auth/login', 
         'auth/register', 
         'auth/forgot-password', 
-        'auth/reset-password'
+        'auth/reset-password',
+        'auth/logout'
     ].includes(path);
 
     // Skip CSRF check for public auth endpoints, but enforce for all other state-changing methods
