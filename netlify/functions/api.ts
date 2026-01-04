@@ -102,7 +102,7 @@ const sendEmail = async (to: string, subject: string, html: string) => {
       });
     } catch (error) {
       console.error('Nodemailer Error:', error);
-      throw new Error('Failed to send email via SMTP');
+      // Don't throw to prevent crashing the request for non-critical email
     }
 };
 
@@ -122,14 +122,43 @@ export const handler = async (event: HandlerEvent) => {
   try {
     const sql = getSql();
 
+    // --- Subscription Middleware / Helper ---
+    // Fetches user and strictly checks/enforces expiry date
+    const getUserAndEnforceExpiry = async (userId: string) => {
+        const users = await sql`SELECT * FROM users WHERE id = ${userId}`;
+        if (users.length === 0) return null;
+        const user = users[0];
+
+        // Check if subscription has expired
+        if (user.subscription !== 'Free' && user.subscription_expiry_date) {
+            const expiry = new Date(user.subscription_expiry_date);
+            const now = new Date();
+            
+            if (expiry < now) {
+                // Downgrade to Free
+                await sql`UPDATE users SET subscription = 'Free' WHERE id = ${userId}`;
+                user.subscription = 'Free';
+                // We keep the expiry date in DB for history/reference, but logic treats it as expired
+            }
+        }
+        return user;
+    };
+
     // --- AI Analysis ---
     if (path === 'analyze' && event.httpMethod === 'POST') {
         const { prediction } = data;
         if (!prediction) return response(400, { error: 'Prediction data required' });
 
-        // Optional: Verify user subscription here if stricter control is needed
-        // const user = verifyToken(event.headers);
-        // if (!user || user.subscription !== 'Premium') ...
+        const decoded = verifyToken(event.headers);
+        if (!decoded) return response(401, { error: 'Unauthorized' });
+
+        const user = await getUserAndEnforceExpiry(decoded.id);
+        if (!user) return response(401, { error: 'User not found' });
+
+        // Enforce Premium for AI
+        if (user.role !== 'admin' && user.subscription !== 'Premium') {
+            return response(403, { error: 'Premium subscription required for AI analysis' });
+        }
 
         try {
             const apiKey = process.env.API_KEY;
@@ -238,12 +267,21 @@ export const handler = async (event: HandlerEvent) => {
       const users = await sql`SELECT * FROM users WHERE email = ${email}`;
       
       if (users.length === 0) return response(401, { error: 'Invalid credentials' });
-      const user = users[0];
+      let user = users[0];
       
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) return response(401, { error: 'Invalid credentials' });
 
-      // Clean up any stale OTPs on successful login to maintain database hygiene
+      // Enforce Expiry on Login
+      if (user.subscription !== 'Free' && user.subscription_expiry_date) {
+        const expiry = new Date(user.subscription_expiry_date);
+        if (expiry < new Date()) {
+            await sql`UPDATE users SET subscription = 'Free' WHERE id = ${user.id}`;
+            user.subscription = 'Free';
+        }
+      }
+
+      // Clean up any stale OTPs on successful login
       try {
         await sql`UPDATE users SET reset_otp = NULL, reset_otp_expiry = NULL WHERE id = ${user.id}`;
       } catch (dbErr) {
@@ -252,7 +290,6 @@ export const handler = async (event: HandlerEvent) => {
       
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET || 'secret-key', { expiresIn: '7d' });
       
-      // Send token in Cookie only
       return response(
         200, 
         { 
@@ -273,7 +310,6 @@ export const handler = async (event: HandlerEvent) => {
 
     // Logout Endpoint
     if (path === 'auth/logout' && event.httpMethod === 'POST') {
-        // Overwrite cookie with expired date
         return response(
             200, 
             { success: true },
@@ -289,12 +325,10 @@ export const handler = async (event: HandlerEvent) => {
         try {
             const users = await sql`SELECT id, name FROM users WHERE email = ${email}`;
             
-            // Security: Don't reveal if user exists, but here we process if they do
             if (users.length > 0) {
                 const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit OTP
                 const expiry = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-                // DB Update
                 try {
                     await sql`UPDATE users SET reset_otp = ${otp}, reset_otp_expiry = ${expiry} WHERE email = ${email}`;
                 } catch (dbErr: any) {
@@ -302,7 +336,6 @@ export const handler = async (event: HandlerEvent) => {
                     throw new Error('Database error while generating OTP.');
                 }
 
-                // Email Send
                 try {
                     await sendEmail(
                         email,
@@ -322,11 +355,8 @@ export const handler = async (event: HandlerEvent) => {
                     );
                 } catch (emailErr) {
                     console.error('Email Send Error:', emailErr);
-                    // Return 500 but with specific message so frontend knows it's an email issue
                     return response(500, { error: 'Failed to send reset email. Please try again later.' });
                 }
-            } else {
-                // Optional: Artificial delay to prevent timing attacks
             }
 
             return response(200, { message: 'If an account exists with that email, a reset code has been sent.' });
@@ -343,7 +373,6 @@ export const handler = async (event: HandlerEvent) => {
         if (!email || !otp || !newPassword) return response(400, { error: 'Missing required fields' });
 
         try {
-            // Check if OTP matches and is not expired
             const users = await sql`
                 SELECT id FROM users 
                 WHERE email = ${email} 
@@ -357,7 +386,6 @@ export const handler = async (event: HandlerEvent) => {
 
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-            // Update password and clear OTP
             await sql`
                 UPDATE users 
                 SET password_hash = ${hashedPassword}, reset_otp = NULL, reset_otp_expiry = NULL 
@@ -375,10 +403,9 @@ export const handler = async (event: HandlerEvent) => {
       const decoded = verifyToken(event.headers);
       if (!decoded) return response(401, { error: 'Unauthorized' });
       
-      const users = await sql`SELECT * FROM users WHERE id = ${decoded.id}`;
-      if (users.length === 0) return response(404, { error: 'User not found' });
+      const u = await getUserAndEnforceExpiry(decoded.id);
+      if (!u) return response(404, { error: 'User not found' });
       
-      const u = users[0];
       return response(200, {
           id: u.id,
           name: u.name,
@@ -393,22 +420,51 @@ export const handler = async (event: HandlerEvent) => {
 
     // --- Predictions ---
     if (path === 'predictions' && event.httpMethod === 'GET') {
+      // 1. Get user and status
+      const decoded = verifyToken(event.headers);
+      let user = null;
+      if (decoded) {
+          user = await getUserAndEnforceExpiry(decoded.id);
+      }
+      
+      // 2. Fetch all predictions
       const preds = await sql`SELECT * FROM predictions ORDER BY date DESC, time ASC`;
-      const mapped = preds.map(p => ({
-        id: p.id,
-        league: p.league,
-        homeTeam: p.home_team,
-        awayTeam: p.away_team,
-        date: p.date,
-        time: p.time,
-        tip: p.tip,
-        odds: Number(p.odds),
-        confidence: p.confidence,
-        minTier: p.min_tier,
-        status: p.status,
-        result: p.result,
-        tipsterId: p.tipster_id
-      }));
+      
+      const getWeight = (tier: string) => {
+         if (tier === 'Premium') return 3;
+         if (tier === 'Standard') return 2;
+         if (tier === 'Basic') return 1;
+         return 0; // Free
+      };
+
+      const userWeight = user ? getWeight(user.subscription) : 0;
+      const isAdmin = user && user.role === 'admin';
+
+      // 3. Map & Mask
+      const mapped = preds.map(p => {
+        const minWeight = getWeight(p.min_tier);
+        const isSettled = p.result !== 'Pending';
+        
+        // Authorization Logic
+        const hasAccess = isAdmin || p.min_tier === 'Free' || userWeight >= minWeight || isSettled;
+
+        return {
+          id: p.id,
+          league: p.league,
+          homeTeam: p.home_team,
+          awayTeam: p.away_team,
+          date: p.date,
+          time: p.time,
+          // Mask the tip if user is not authorized
+          tip: hasAccess ? p.tip : '🔒 Premium Tip',
+          odds: Number(p.odds),
+          confidence: p.confidence,
+          minTier: p.min_tier,
+          status: p.status,
+          result: p.result,
+          tipsterId: p.tipster_id
+        };
+      });
       return response(200, mapped);
     }
 
