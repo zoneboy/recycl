@@ -4,25 +4,27 @@ import { User, Prediction, PaymentTransaction, BlogPost, PredictionResult, Match
 const isProd = (import.meta as any).env && (import.meta as any).env.PROD;
 const API_URL = isProd ? '/.netlify/functions/api' : '/api';
 
-// Store CSRF token in memory. 
-// This is more secure than localStorage as it clears on tab close, 
-// and is re-fetched via getCurrentUser on page load.
-let _csrfToken = '';
+// Initialize CSRF token from storage if available to prevent loss on refresh/HMR
+let _csrfToken = localStorage.getItem('csrf_token') || '';
+
+const setCsrfToken = (token: string) => {
+    if (token) {
+        _csrfToken = token;
+        localStorage.setItem('csrf_token', token);
+    }
+};
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   
-  // If we have a CSRF token, attach it. 
-  // The backend requires this for POST/PUT/DELETE.
+  // Attach CSRF token if available
   if (_csrfToken) {
     headers['X-CSRF-Token'] = _csrfToken;
   }
 
-  // We rely on HttpOnly cookies for the Auth Token, 
-  // so we don't strictly need to send Authorization header if the cookie works.
-  // However, for backward compatibility if you still use localStorage:
+  // Fallback for legacy auth (if cookies fail or not supported in specific envs)
   const localToken = localStorage.getItem('token');
   if (localToken) {
       headers['Authorization'] = `Bearer ${localToken}`;
@@ -46,12 +48,9 @@ export const api = {
     }
     
     const data = await res.json();
-    // Capture the CSRF token from the response
     if (data.csrfToken) {
-        _csrfToken = data.csrfToken;
+        setCsrfToken(data.csrfToken);
     }
-    // We don't need to store 'token' in localStorage anymore as it's in a cookie,
-    // but we can keep user data if needed.
     return data;
   },
 
@@ -69,18 +68,24 @@ export const api = {
 
     const data = await res.json();
     if (data.csrfToken) {
-        _csrfToken = data.csrfToken;
+        setCsrfToken(data.csrfToken);
     }
     return data;
   },
 
   async logout() {
-    await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: getHeaders()
-    });
-    _csrfToken = '';
-    localStorage.removeItem('token'); // Clear legacy token if exists
+    try {
+        await fetch(`${API_URL}/auth/logout`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+    } catch (e) {
+        console.error("Logout error", e);
+    } finally {
+        _csrfToken = '';
+        localStorage.removeItem('csrf_token');
+        localStorage.removeItem('token');
+    }
   },
 
   async forgotPassword(email: string) {
@@ -111,15 +116,19 @@ export const api = {
 
   async getCurrentUser(): Promise<User | null> {
     try {
-        // We attempt to fetch 'me'. The backend will check the Cookie.
         const res = await fetch(`${API_URL}/auth/me`, { headers: getHeaders() });
         if (res.ok) {
             const data = await res.json();
-            // Important: The backend sends a fresh CSRF token here if valid
             if (data.csrfToken) {
-                _csrfToken = data.csrfToken;
+                setCsrfToken(data.csrfToken);
             }
             return data.user || data;
+        }
+        // If 401/403, clear tokens
+        if (res.status === 401 || res.status === 403) {
+            _csrfToken = '';
+            localStorage.removeItem('csrf_token');
+            localStorage.removeItem('token');
         }
         return null;
     } catch (e) {
